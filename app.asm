@@ -21,6 +21,9 @@ SPRITE_BYTES  equ SPRITE_WIDTH / 8
 SPRITE_ROWS   equ SPRITE_HEIGHT / 4
 SPRITE_PLANE  equ SPRITE_BYTES * SPRITE_HEIGHT
 FOOD_SPRITE_TICKS equ 128      ; circa twee seconden bij de huidige spellus
+SPRITE_NORMAL     equ 0
+SPRITE_FOOD       equ 1
+SPRITE_GAME_OVER  equ 2
 ; De Sanyo-indeling vereist een byte-uitgelijnde x-positie. Dit is x=304,
 ; vier pixels rechts van het exacte midden.
 SPRITE_OFFSET equ ((WIDTH - SPRITE_WIDTH + 8) / 16) * 4
@@ -88,6 +91,8 @@ game_loop:
   call move_snake
   jnc .boost
 .crashed:
+  mov byte [top_sprite_state],SPRITE_GAME_OVER
+  call draw_top_sprite
   call play_crash_sound
   jmp menu_screen
 .keep_playing:
@@ -172,9 +177,14 @@ draw_top_sprite:
   push bp
   push es
   mov si,sprite1_pic
-  cmp word [food_sprite_ticks],0
-  je .draw
+  cmp byte [top_sprite_state],SPRITE_GAME_OVER
+  je .game_over
+  cmp byte [top_sprite_state],SPRITE_FOOD
+  jne .draw
   mov si,sprite2_pic
+  jmp short .draw
+.game_over:
+  mov si,sprite3_pic
 .draw:
   mov ax,BLUE
   mov es,ax
@@ -227,6 +237,7 @@ update_top_sprite:
   je .done
   dec word [food_sprite_ticks]
   jnz .done
+  mov byte [top_sprite_state],SPRITE_NORMAL
   call draw_top_sprite
 .done:
   ret
@@ -320,6 +331,7 @@ reset_game:
   mov word [growth_remaining],0
   mov word [score],0
   mov word [food_sprite_ticks],0
+  mov byte [top_sprite_state],SPRITE_NORMAL
   mov byte [snake_direction],DIR_RIGHT
   mov byte [boost_moves],0
   call draw_score
@@ -386,6 +398,7 @@ move_snake:
   mov word [score],0
 .score_in_range:
   mov word [food_sprite_ticks],FOOD_SPRITE_TICKS
+  mov byte [top_sprite_state],SPRITE_FOOD
   call draw_score
   add word [growth_remaining],GROWTH_PER_FOOD
   mov byte [ate_food],1
@@ -1144,6 +1157,7 @@ snake_length:     dw SNAKE_INITIAL_LEN
 growth_remaining: dw 0
 score:            dw 0
 food_sprite_ticks: dw 0
+top_sprite_state: db SPRITE_NORMAL
 food_offset:      dw FOOD_INITIAL
 random_seed:      dw 0ace1h
 snake_positions:  times SNAKE_CELLS dw 0
@@ -1164,5 +1178,9 @@ sprite1_pic:
 ; Drie conventionele scanline-planes in B, G, R-volgorde.
 sprite2_pic:
   incbin "assets/sanyo/sprite2-dithered-32x8.pic"
+
+; Drie conventionele scanline-planes in B, G, R-volgorde.
+sprite3_pic:
+  incbin "assets/sanyo/sprite3-dithered-32x8.pic"
 
 %include "footer.asm"
