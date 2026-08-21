@@ -78,6 +78,10 @@ CREDITS_LINE3_OFFSET equ (16 / 4) * ROW_BYTES
 setup:
   push cs
   pop ds
+
+  mov al, 5
+  out 10h, al
+
   call init_menu_keyboard
   jmp menu_screen
 

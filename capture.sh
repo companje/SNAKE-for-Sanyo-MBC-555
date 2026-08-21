@@ -13,6 +13,7 @@ mame mbc55x \
   -ramsize 256K -skip_gameinfo -window -ui_active \
   -seconds_to_run "$seconds" \
   -snapshot_directory "$(pwd)/$captures" \
-  -snapname gsnake -snapview native -snapsize 640x200 -nosnapbilinear
+  -snapname gsnake -snapview native -snapsize 640x200 -nosnapbilinear \
+  -prescale 2 -gamma 3 -contrast 1.5
 
 echo "Screenshot: $captures/gsnake.png"

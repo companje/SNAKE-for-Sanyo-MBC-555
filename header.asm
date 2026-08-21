@@ -8,7 +8,7 @@ BOOT_SECTOR_SIZE equ 512
 DISK_SIZE        equ 180 * 1024
 
 RED   equ 0f000h
-GREEN equ 0800h
+GREEN equ 01c00h    ; MAME = 0800h
 BLUE  equ 0f400h
 
 ; Select the screen geometry. Without a choice, 576×200 is the default.
