@@ -15,6 +15,14 @@ MENU_PLANE  equ MENU_BYTES * MENU_HEIGHT
 MENU_OFFSET equ (40 / 4) * ROW_BYTES + ((WIDTH - MENU_WIDTH) / 16) * 4
 SCORE_X     equ WIDTH - 8 - (3 * 16)
 SCORE_OFFSET equ (SCORE_X / 8) * 4
+SPRITE_WIDTH  equ 40
+SPRITE_HEIGHT equ 8
+SPRITE_BYTES  equ SPRITE_WIDTH / 8
+SPRITE_ROWS   equ SPRITE_HEIGHT / 4
+SPRITE_PLANE  equ SPRITE_BYTES * SPRITE_HEIGHT
+; De Sanyo-indeling vereist een byte-uitgelijnde x-positie. Dit is x=304,
+; vier pixels rechts van het exacte midden.
+SPRITE_OFFSET equ ((WIDTH - SPRITE_WIDTH + 8) / 16) * 4
 
 ; Eén slangsegment is 2x1 schermpixels: horizontaal verdubbeld, maar één
 ; scanline hoog zoals het oorspronkelijke spel.
@@ -151,6 +159,46 @@ copy_menu_plane:
   jnz .row
   ret
 
+; Teken de 40x8-sprite gecentreerd in de zwarte marge boven het speelveld.
+draw_top_sprite:
+  mov si,sprite_pic
+  mov ax,BLUE
+  mov es,ax
+  call copy_sprite_plane
+  mov ax,GREEN
+  mov es,ax
+  call copy_sprite_plane
+  mov ax,RED
+  mov es,ax
+  call copy_sprite_plane
+  ret
+
+; Zet een lineaire SPRITE_WIDTHxSPRITE_HEIGHT-plane om naar Sanyo-VRAM.
+; SI gaat na afloop naar de volgende conventionele kleurplane.
+copy_sprite_plane:
+  mov di,SPRITE_OFFSET
+  mov bp,SPRITE_ROWS
+.row:
+  mov bx,si
+  mov cx,SPRITE_BYTES
+.column:
+  mov al,[bx]
+  mov es:[di],al
+  mov al,[bx + SPRITE_BYTES]
+  mov es:[di + 1],al
+  mov al,[bx + SPRITE_BYTES * 2]
+  mov es:[di + 2],al
+  mov al,[bx + SPRITE_BYTES * 3]
+  mov es:[di + 3],al
+  inc bx
+  add di,4
+  loop .column
+  add di,ROW_BYTES - SPRITE_BYTES * 4
+  add si,SPRITE_BYTES * 4
+  dec bp
+  jnz .row
+  ret
+
 ; Lees hoogstens één getypte toets. Naast WASD werken de vier fysieke
 ; cursorpijlen op het Sanyo-cijferblok: 8 omhoog, 4 links, 5 omlaag, 6 rechts.
 ; Een tegengestelde richting wordt genegeerd.
@@ -235,6 +283,7 @@ reset_game:
   call clear_screen
   call clear_top_margin
   call draw_playfield
+  call draw_top_sprite
   mov word [snake_head_index],0
   mov word [snake_length],SNAKE_INITIAL_LEN
   mov word [growth_remaining],0
@@ -1072,5 +1121,9 @@ key:
 ; Drie conventionele scanline-planes in B, G, R-volgorde.
 menu_pic:
   incbin "assets/sanyo/menu-ok-w-dithered-384x116.pic"
+
+; Drie conventionele scanline-planes in B, G, R-volgorde.
+sprite_pic:
+  incbin "assets/sanyo/sprite1-dithered-40x8.pic"
 
 %include "footer.asm"
