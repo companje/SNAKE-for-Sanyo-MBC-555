@@ -1,0 +1,11 @@
+.DS_Store
+
+# NASM/build artifacts
+*.bin
+*.lst
+*.img
+
+# MAME runtime state
+cfg/
+snap/
+nvram/
