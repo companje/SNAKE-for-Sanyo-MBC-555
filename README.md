@@ -1,11 +1,11 @@
-# GSNAKE for the Sanyo MBC-555
+# SNAKE for the Sanyo MBC-550/555
 
 <p>
   <img src="doc/gnsake-menu.png" alt="GSNAKE menu on the Sanyo MBC-555" width="49%">
   <img src="doc/gsnake-play-pause.png" alt="GSNAKE gameplay with the pause overlay" width="49%">
 </p>
 
-A new 8088 port of **GSNAKE**, the Snake game originally written for DOS in
+A new 8088 port of **SNAKE**, a Snake game originally written for DOS in
 1996. The source version ran on a 386 in VGA mode 13h; this project builds a
 bootable floppy image for the native video hardware of the Sanyo MBC-555.
 
@@ -28,7 +28,7 @@ real constraints of the MBC-555 and does not use BIOS or DOS video services.
 
 Conversion from 256 to 8 colours is intentionally not automated. PNGs in
 `assets/original-vga/` are exported from the old game. Dithering and colour
-reduction for the Sanyo are performed manually; the results live in
+reduction for the Sanyo are performed externally with Photoshop, Aseprite and [Ditherit.com](https://ditherit.com/)); the results live in
 `assets/sanyo/`.
 
 ## Current status
@@ -140,7 +140,7 @@ assembling is insufficient for graphical changes.
 | `capture.sh` | Builds, runs MAME briefly, and writes a screenshot |
 | `doc/` | README screenshots |
 | `gsnake-1996-TASM.zip` | Preserved original DOS/TASM package |
-| `assets/original-vga/` | Unmodified PNG exports of the original VGA assets |
+| `assets/original-vga/` | Unmodified PNG exports of the original VGA assets (extracted from sourcecode) |
 | `assets/sanyo/` | Manually reduced/dithered Sanyo assets and `.pic` data |
 
 ## Constraints
