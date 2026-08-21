@@ -73,7 +73,7 @@ KEY_ESCAPE  equ 1bh
 
 CREDITS_LINE1_OFFSET equ (0 / 4) * ROW_BYTES
 CREDITS_LINE2_OFFSET equ (8 / 4) * ROW_BYTES
-CREDITS_LINE3_OFFSET equ (16 / 4) * ROW_BYTES
+CREDITS_LINE3_OFFSET equ (24 / 4) * ROW_BYTES
 
 setup:
   push cs
@@ -1416,7 +1416,7 @@ key:
   .code db 0
   .ctrl db 0
 
-credits_line1 db 'SNAKE.COM v1.00  by Rick Companje 17/12/1996',0
+credits_line1 db 'SNAKE.COM v1.00  by Rick Companje 17-12-1996',0
 credits_line2 db 'Copyright (C) 1996  TMR Software Productions',0
 credits_line3 db 'Rewritten with love in 2026 for the Sanyo MBC-550/555. Sanyo 4-ever!',0
 
