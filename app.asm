@@ -973,6 +973,7 @@ draw_double_char:
   push bx
   push cx
   push dx
+  push di
   push si
   push bp
   push es
@@ -1016,6 +1017,7 @@ draw_double_char:
   pop es
   pop bp
   pop si
+  pop di
   pop dx
   pop cx
   pop bx
