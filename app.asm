@@ -20,19 +20,19 @@ SPRITE_HEIGHT equ 8
 SPRITE_BYTES  equ SPRITE_WIDTH / 8
 SPRITE_ROWS   equ SPRITE_HEIGHT / 4
 SPRITE_PLANE  equ SPRITE_BYTES * SPRITE_HEIGHT
-FOOD_SPRITE_TICKS equ 128      ; circa twee seconden bij de huidige spellus
+FOOD_SPRITE_TICKS equ 128      ; approximately two seconds at the current game-loop rate
 SPRITE_NORMAL     equ 0
 SPRITE_FOOD       equ 1
 SPRITE_GAME_OVER  equ 2
-; De Sanyo-indeling vereist een byte-uitgelijnde x-positie. Dit is x=304,
-; vier pixels rechts van het exacte midden.
+; The Sanyo layout requires a byte-aligned x position. This is x=304,
+; four pixels to the right of the exact centre.
 SPRITE_OFFSET equ ((WIDTH - SPRITE_WIDTH + 8) / 16) * 4
 
-; Eén slangsegment is 2x1 schermpixels: horizontaal verdubbeld, maar één
-; scanline hoog zoals het oorspronkelijke spel.
-; Het speelveld heeft 318 horizontale 2x1-cellen en 190 bruikbare scanlines.
-; De ringbuffer staat buiten de geladen code op 2000:0000 en loopt via 3000h
-; door. Eén vrije cel voorkomt dat kop en staart in de ring samenvallen.
+; One snake segment is 2x1 screen pixels: doubled horizontally, but one
+; scanline high like the original game.
+; The playfield has 318 horizontal 2x1 cells and 190 usable scanlines.
+; The ring buffer is outside the loaded code at 2000:0000 and continues via
+; 3000h. One free cell prevents the head and tail from coinciding in the ring.
 SNAKE_CELLS       equ 318 * 190
 SNAKE_MAX_LEN     equ SNAKE_CELLS - 1
 SNAKE_POS_LOW_SEG equ 2000h
@@ -56,7 +56,7 @@ DIR_LEFT  equ 1
 DIR_UP    equ 2
 DIR_DOWN  equ 3
 
-; De MBC-555 heeft een seriële toetsenbord-UART op deze fysieke I/O-poorten.
+; The MBC-555 has a serial keyboard UART at these physical I/O ports.
 KBD_DATA    equ 38h
 KBD_CONTROL equ 3ah
 KBD_RX_READY equ 02h
@@ -117,7 +117,7 @@ game_loop:
   loop .delay
   jmp game_loop
 
-; Toon de aftiteling met het gewone 8x8-ROM-font en wacht op één toets.
+; Show the credits using the regular 8x8 ROM font and wait for one key.
 credits_screen:
   call clear_screen_black
   mov si,credits_line1
@@ -134,7 +134,7 @@ credits_screen:
   jz .wait_key
   jmp menu_screen
 
-; De menu-UART levert ASCII voor P en spatie.
+; The menu UART supplies ASCII for P and Space.
 init_menu_keyboard:
   mov al,40h
   out KBD_CONTROL,al
@@ -144,8 +144,8 @@ init_menu_keyboard:
   out KBD_CONTROL,al
   ret
 
-; De spel-UART-configuratie levert de fysieke Sanyo-cursortoetsen als
-; ASCII-controlcodes 1Ch..1Fh.
+; The game UART configuration supplies the physical Sanyo cursor keys as
+; ASCII control codes 1Ch..1Fh.
 init_game_keyboard:
   xor al,al
   out KBD_CONTROL,al
@@ -157,7 +157,7 @@ init_game_keyboard:
   out KBD_CONTROL,al
   ret
 
-; Teken het bestaande Sanyo-menu opnieuw als start- en game-overscherm.
+; Redraw the existing Sanyo menu as the start and game-over screen.
 show_menu:
   call clear_screen
   mov si,menu_pic
@@ -172,8 +172,8 @@ show_menu:
   call copy_menu_plane
   ret
 
-; Zet een lineaire MENU_WIDTH×MENU_HEIGHT-plane om naar Sanyo's
-; vier-scanline-indeling.
+; Convert a linear MENU_WIDTH×MENU_HEIGHT plane to Sanyo's four-scanline
+; layout.
 copy_menu_plane:
   mov di,MENU_OFFSET
   mov bp,MENU_ROWS
@@ -198,7 +198,7 @@ copy_menu_plane:
   jnz .row
   ret
 
-; Teken de actieve 32x8-sprite gecentreerd in de zwarte marge boven het speelveld.
+; Draw the active 32x8 sprite centred in the black margin above the playfield.
 draw_top_sprite:
   push ax
   push bx
@@ -237,8 +237,8 @@ draw_top_sprite:
   pop ax
   ret
 
-; Zet een lineaire SPRITE_WIDTHxSPRITE_HEIGHT-plane om naar Sanyo-VRAM.
-; SI gaat na afloop naar de volgende conventionele kleurplane.
+; Convert a linear SPRITE_WIDTHxSPRITE_HEIGHT plane to Sanyo VRAM.
+; On return, SI points to the next conventional colour plane.
 copy_sprite_plane:
   mov di,SPRITE_OFFSET
   mov bp,SPRITE_ROWS
@@ -263,7 +263,7 @@ copy_sprite_plane:
   jnz .row
   ret
 
-; Laat sprite 2 na voedsel tijdelijk zien en herstel daarna sprite 1.
+; Show sprite 2 temporarily after food, then restore sprite 1.
 update_top_sprite:
   cmp word [food_sprite_ticks],0
   je .done
@@ -274,9 +274,9 @@ update_top_sprite:
 .done:
   ret
 
-; Lees hoogstens één getypte toets. Naast WASD werken de vier fysieke
-; cursorpijlen op het Sanyo-cijferblok: 8 omhoog, 4 links, 5 omlaag, 6 rechts.
-; Een tegengestelde richting wordt genegeerd.
+; Read at most one typed key. Alongside WASD, the four physical cursor keys on
+; the Sanyo numeric keypad work too: 8 up, 4 left, 5 down, and 6 right.
+; An opposite direction is ignored.
 read_keyboard:
   call check_keys
   jz .done
@@ -290,7 +290,7 @@ read_keyboard:
   je .left
   cmp al,KEY_RIGHT
   je .right
-  and al,5fh                 ; ASCII naar hoofdletter
+  and al,5fh                 ; convert ASCII to uppercase
   cmp al,'Q'
   je credits_screen
   cmp al,'W'
@@ -341,7 +341,7 @@ read_keyboard:
 .done:
   ret
 
-; Retourneert Z=0 wanneer AL een nieuwe toetscode bevat.
+; Returns Z=0 when AL contains a newly received key code.
 check_keys:
   in al,KBD_CONTROL
   mov ah,al
@@ -388,7 +388,7 @@ reset_game:
   call draw_food
   ret
 
-; CF=1 wanneer de slang de rand of haar lichaam raakt.
+; CF=1 when the snake hits the border or its own body.
 move_snake:
   mov bx,[snake_head_index]
   call read_snake_position
@@ -415,8 +415,8 @@ move_snake:
   call is_food_at_position
   jc .eat_food
 
-  ; De rode plane is alleen nul op de blauwe achtergrond. Kader en lichaam
-  ; zijn er beide wit en veroorzaken dus een botsing.
+  ; The red plane is zero only on the blue background. Both border and body
+  ; are white there, so they cause a collision.
   push ax
   call packed_to_vram
   mov bx,RED
@@ -458,12 +458,12 @@ move_snake:
   jmp short .after_tail
 
 .growth_limit:
-  ; Houd één vrije positie in de ringbuffer. Bij de limiet beweegt de
-  ; staart door en stapelt resterende groei niet verder op.
+  ; Keep one free position in the ring buffer. At the limit, the tail keeps
+  ; moving and remaining growth does not accumulate further.
   mov word [growth_remaining],0
 
 .erase_tail:
-  ; Na het invoegen staat de oude staart op head_index + lengte.
+  ; After insertion, the old tail is at head_index + length.
   mov bx,[snake_head_index]
   add bx,[snake_length]
   cmp bx,SNAKE_CELLS
@@ -483,9 +483,9 @@ move_snake:
   stc
   ret
 
-; Kies een lege byte-uitgelijnde 8x4-positie binnen het kader met een LFSR.
-; Ongeldige waarden worden opnieuw getrokken: zo blijft elke positie gelijkmatig
-; verdeeld, zonder een voorkeur voor de linkerkant.
+; Choose an empty byte-aligned 8x4 position within the border using an LFSR.
+; Invalid values are drawn again, keeping every position evenly distributed
+; without a bias toward the left side.
 place_food:
 .try_again:
   mov ax,[random_seed]
@@ -495,7 +495,7 @@ place_food:
 .no_tap:
   mov [random_seed],ax
 
-  ; Kolom 1..78 (x=8..624), uit de lage zeven bits.
+  ; Column 1..78 (x=8..624), from the low seven bits.
   mov bx,ax
   and bx,007fh
   cmp bx,78
@@ -505,7 +505,7 @@ place_food:
   shl bx,1
   mov di,bx
 
-  ; Rij 3..48 (y=12..192), uit de hoge zes bits.
+  ; Row 3..48 (y=12..192), from the high six bits.
   mov cl,8
   shr ax,cl
   and ax,003fh
@@ -553,7 +553,7 @@ clear_screen:
   rep stosw
   ret
 
-; Wis alle drie RGB-planes voor een volledig zwart scherm.
+; Clear all three RGB planes for a fully black screen.
 clear_screen_black:
   mov ax,RED
   mov es,ax
@@ -566,7 +566,7 @@ clear_screen_black:
   call clear_plane
   ret
 
-; Maak de bovenste acht scanlines zwart; deze horen niet bij het speelveld.
+; Make the top eight scanlines black; they are outside the playfield.
 clear_top_margin:
   mov ax,RED
   mov es,ax
@@ -586,8 +586,8 @@ clear_top_margin_plane:
   rep stosw
   ret
 
-; Teken een blauw-cyaan schaakpatroon. De blauwe pixels zijn de bestaande
-; achtergrond; alleen de groene plane hoeft voor de cyaan pixels gezet te zijn.
+; Draw a blue/cyan checker pattern. Blue pixels are the existing background;
+; only the green plane needs to be set for cyan pixels.
 draw_playfield:
   mov al,FIELD_TOP
   call draw_dotted_hline
@@ -598,7 +598,7 @@ draw_playfield:
   call draw_dotted_vlines
   ret
 
-; AL is een y-coordinaat. Blauw, cyaan, blauw, cyaan over een hele scanline.
+; AL is a y coordinate. Blue, cyan, blue, cyan across a full scanline.
 draw_dotted_hline:
   push ax
   push bx
@@ -630,7 +630,7 @@ draw_dotted_hline:
   mov ax,GREEN
   mov es,ax
   mov cx,COLS
-  mov al,55h                 ; x=0 blauw, x=1 cyaan
+  mov al,55h                 ; x=0 blue, x=1 cyan
 .next_byte:
   mov es:[di],al
   add di,4
@@ -642,19 +642,19 @@ draw_dotted_hline:
   pop ax
   ret
 
-; Verticale rand: twee pixels. Per scanline wisselt blauw/cyaan om.
+; Vertical border: two pixels. Blue/cyan alternates on every scanline.
 draw_dotted_vlines:
   mov di,((FIELD_TOP + 1) / 4) * ROW_BYTES + (FIELD_LEFT / 8) * 4 + ((FIELD_TOP + 1) & 3)
-  mov al,40h                 ; links: blauw, cyaan
-  mov ah,80h                 ; daaronder: cyaan, blauw
+  mov al,40h                 ; left: blue, cyan
+  mov ah,80h                 ; below: cyan, blue
   call draw_dotted_vline
   mov di,((FIELD_TOP + 1) / 4) * ROW_BYTES + (638 / 8) * 4 + ((FIELD_TOP + 1) & 3)
-  mov al,01h                 ; rechts: blauw, cyaan
-  mov ah,02h                 ; daaronder: cyaan, blauw
+  mov al,01h                 ; right: blue, cyan
+  mov ah,02h                 ; below: cyan, blue
   call draw_dotted_vline
   ret
 
-; ES is de groene plane, DI de eerste scanline, AL/AH de alternerende maskers.
+; ES is the green plane, DI the first scanline, and AL/AH the alternating masks.
 draw_dotted_vline:
   push bx
   push cx
@@ -678,7 +678,7 @@ draw_dotted_vline:
   pop bx
   ret
 
-; AL is een y-coordinaat. Schrijf een volledige 640-pixel witte lijn.
+; AL is a y coordinate. Write a full 640-pixel white line.
 draw_white_hline:
   push ax
   push bx
@@ -767,10 +767,10 @@ draw_vline_in_plane:
   pop bx
   ret
 
-; Posities bevatten de Sanyo-VRAM-offset in bits 2..15 en de 2-pixel-maskindex
-; in bits 0..1. Dit ondersteunt verticale beweging per enkele scanline.
-; BX is de ringbufferindex. De buffer zelf staat buiten code en stack in het
-; vrije RAM vanaf 2000:0000; AX bevat of ontvangt de ingepakte positie.
+; Positions contain the Sanyo VRAM offset in bits 2..15 and the two-pixel mask
+; index in bits 0..1. This supports vertical movement by individual scanlines.
+; BX is the ring buffer index. The buffer itself is outside code and stack in
+; free RAM starting at 2000:0000; AX contains or receives the packed position.
 read_snake_position:
   push bx
   push dx
@@ -821,9 +821,9 @@ packed_to_vram:
   mov al,[cs:dot_masks + bx]
   ret
 
-; CF=1 als de 2x1-kop een van de vier spelveldranden zou raken. Deze
-; controle is los van de zichtbare blauw-cyaan rand, waarin blauwe pixels
-; dezelfde kleur hebben als de achtergrond.
+; CF=1 if the 2x1 head would hit one of the four playfield borders. This check
+; is separate from the visible blue/cyan border, whose blue pixels match the
+; background colour.
 is_outside_playfield:
   push ax
   push bx
@@ -838,32 +838,32 @@ is_outside_playfield:
   mov bx,ROW_BYTES
   div bx                       ; AX=vier-scanlineblok, DX=blokrest
   mov si,dx
-  and si,3                     ; alleen scanline 0..3, niet de x-positie
+  and si,3                     ; scanline 0..3 only, not the x position
 
-  cmp ax,2                    ; y=0..7 is de zwarte bovenmarge
+  cmp ax,2                    ; y=0..7 is the black top margin
   jb .outside
   cmp ax,49
   ja .outside
   cmp ax,2
   jne .not_top_block
-  cmp si,1                    ; alleen y=8 valt op de bovenrand
+  cmp si,1                    ; only y=8 is on the top border
   jb .outside
 .not_top_block:
   cmp ax,49
   jne .check_x
-  cmp si,3                    ; y=199 is de onderrand
+  cmp si,3                    ; y=199 is the bottom border
   jae .outside
 .check_x:
   shr dx,1
-  shr dx,1                    ; bytekolom 0..79
+  shr dx,1                    ; byte column 0..79
   or dx,dx
   jnz .not_left
-  or cx,cx                    ; x=0/1 is de linker rand
+  or cx,cx                    ; x=0/1 is the left border
   jz .outside
 .not_left:
   cmp dx,COLS - 1
   jne .inside
-  cmp cx,3                    ; x=638/639 is de rechter rand
+  cmp cx,3                    ; x=638/639 is the right border
   je .outside
 .inside:
   pop si
@@ -888,7 +888,7 @@ step_right:
   cmp bx,3
   jne .same_byte
   and ax,0fffch
-  add ax,16                    ; volgende videobytekolom
+  add ax,16                    ; next video-byte column
   ret
 .same_byte:
   inc ax
@@ -900,7 +900,7 @@ step_left:
   or bx,bx
   jnz .same_byte
   and ax,0fffch
-  sub ax,16                    ; vorige videobytekolom
+  sub ax,16                    ; previous video-byte column
   add ax,3
   ret
 .same_byte:
@@ -914,7 +914,7 @@ step_up:
   and bx,3
   or bx,bx
   jnz .same_block
-  sub ax,1268                  ; offset -317 over de blokgrens
+  sub ax,1268                  ; offset -317 across the block boundary
   ret
 .same_block:
   sub ax,4                     ; offset -1
@@ -927,13 +927,13 @@ step_down:
   and bx,3
   cmp bx,3
   jne .same_block
-  add ax,1268                  ; offset +317 over de blokgrens
+  add ax,1268                  ; offset +317 across the block boundary
   ret
 .same_block:
   add ax,4                     ; offset +1
   ret
 
-; CF=1 als de 2x1-kop een gele pixel van het 8x4-balletje raakt.
+; CF=1 if the 2x1 head hits a yellow pixel of the 8x4 food ball.
 is_food_at_position:
   push ax
   call packed_to_vram
@@ -953,7 +953,7 @@ is_food_at_position:
   clc
   ret
 
-; AX is een slangpositie. De witte 2x1-pixelstip overschrijft alleen haar bits.
+; AX is a snake position. The white 2x1 pixel dot overwrites only its bits.
 draw_white_dot:
   push ax
   push bx
@@ -981,7 +981,7 @@ draw_white_dot:
   pop ax
   ret
 
-; AX is een slangpositie; herstel uitsluitend de blauwe achtergrond eronder.
+; AX is a snake position; restore only the blue background underneath it.
 clear_dot:
   push ax
   push bx
@@ -1011,8 +1011,8 @@ clear_dot:
   pop ax
   ret
 
-; Geel = rood + groen zonder blauw. Alleen de gele bits worden aangeraakt,
-; zodat de vier hoekpixels van het 8x4-balletje blauw blijven.
+; Yellow = red + green without blue. Only yellow bits are touched, leaving the
+; four corner pixels of the 8x4 food ball blue.
 draw_food:
   mov di,[food_offset]
   mov bx,RED
@@ -1036,7 +1036,7 @@ draw_food_in_red_or_green:
   or byte es:[di + 3],3ch
   ret
 
-; Wis uitsluitend de gele pixels van het vorige balletje en herstel blauw.
+; Clear only the yellow pixels of the previous food ball and restore blue.
 clear_food:
   mov di,[food_offset]
   mov bx,RED
@@ -1059,9 +1059,9 @@ clear_food:
   or byte es:[di + 3],3ch
   ret
 
-; De MBC-55x leidt de USART-break-bit naar de speaker. Behoud alle
-; spelregisters, want deze routine draait precies tussen kopberekening en
-; het invoegen van de nieuwe kop in de slang.
+; The MBC-55x routes the USART break bit to the speaker. Preserve all game
+; registers, because this routine runs exactly between calculating the head and
+; inserting the new head into the snake.
 play_food_sound:
   push ax
   push bx
@@ -1076,7 +1076,7 @@ play_food_sound:
   pop ax
   ret
 
-; Een oplopende periode betekent een dalende toon: hoog naar laag.
+; An increasing period means a descending tone: high to low.
 play_crash_sound:
   push ax
   push bx
@@ -1098,7 +1098,7 @@ play_crash_sound:
   pop ax
   ret
 
-; BX=toonfrequentie, DX=duur.
+; BX=note frequency, DX=duration.
 play:
   mov cx,bx
   mov ax,35h
@@ -1117,8 +1117,8 @@ play:
 .done:
   ret
 
-; Teken de score als drie witte ROM-glyphs in de zwarte bovenmarge. Elke
-; bronpixel wordt met stretch_bits horizontaal verdubbeld, dus 8x8 wordt 16x8.
+; Draw the score as three white ROM glyphs in the black top margin. Each source
+; pixel is doubled horizontally with stretch_bits, making 8x8 into 16x8.
 draw_score:
   push ax
   push bx
@@ -1131,7 +1131,7 @@ draw_score:
   div bx
   push dx
   add al,'0'
-  mov di,SCORE_OFFSET          ; rechts uitgelijnd, met 8 pixels marge
+  mov di,SCORE_OFFSET          ; right-aligned, with an 8-pixel margin
   call draw_double_char
   pop ax
   xor dx,dx
@@ -1139,12 +1139,12 @@ draw_score:
   div bx
   push dx
   add al,'0'
-  add di,8                    ; volgend dubbelbreed teken
+  add di,8                    ; next double-width character
   call draw_double_char
   pop dx
   add dl,'0'
   mov al,dl
-  add di,8                    ; volgend dubbelbreed teken
+  add di,8                    ; next double-width character
   call draw_double_char
   call draw_top_sprite
   pop di
@@ -1153,8 +1153,8 @@ draw_score:
   pop ax
   ret
 
-; DS:SI wijst naar een nul-terminated ASCII-tekst; DI is de startpositie in
-; Sanyo-VRAM. Tekens gebruiken het ongerekte 8x8-ROM-font.
+; DS:SI points to a null-terminated ASCII string; DI is the Sanyo VRAM start
+; position. Characters use the unstretched 8x8 ROM font.
 draw_normal_text:
   push ax
   push si
@@ -1164,7 +1164,7 @@ draw_normal_text:
   or al,al
   jz .done
   call draw_normal_char
-  add di,4                    ; volgend 8-pixelteken
+  add di,4                    ; next 8-pixel character
   jmp short .next_char
 .done:
   pop di
@@ -1172,7 +1172,7 @@ draw_normal_text:
   pop ax
   ret
 
-; AL=ASCII-teken, DI=Sanyo-VRAM-offset van het teken op een 4-line grens.
+; AL=ASCII character, DI=Sanyo VRAM offset of the character on a four-line boundary.
 draw_normal_char:
   push ax
   push bx
@@ -1225,7 +1225,7 @@ draw_normal_char:
   pop ax
   ret
 
-; AL=ASCII-teken, DI=Sanyo-VRAM-offset van de eerste glyph-byte op y=0.
+; AL=ASCII character, DI=Sanyo VRAM offset of the first glyph byte at y=0.
 draw_double_char:
   push ax
   push bx
@@ -1282,7 +1282,7 @@ draw_double_char:
   pop ax
   ret
 
-; AL=abcdefgh wordt AX=aabbccddeeffgghh.
+; AL=abcdefgh becomes AX=aabbccddeeffgghh.
 stretch_bits:
   push cx
   push bx

@@ -1,4 +1,4 @@
-; Bepaal het aantal te lezen sectoren uit de daadwerkelijke stage-2-grootte.
+; Derive the number of sectors to read from the actual stage-2 size.
 %assign STAGE2_BYTES $-$$
 %assign PROGRAM_BYTES BOOTLOADER_BYTES + STAGE2_BYTES
 %warning PROGRAM_BYTES bytes (bootloader: BOOTLOADER_BYTES, app: STAGE2_BYTES)
@@ -10,11 +10,11 @@ APP_SECTORS equ (($-$$) + 511) / 512
 %endif
 
 %if APP_SECTORS > 359
-  %error stage 2 past niet op een 180-KiB-disk met één bootsector
+  %error stage 2 does not fit on a 180-KiB disk with one boot sector
 %endif
 
 times APP_SECTORS*512-($-$$) db 0
 
-; De bootsector staat al voor deze sectie op disk. Vul de rest van de image
-; aan tot 40 tracks × 9 sectoren × 512 bytes (180 KiB).
+; The boot sector already precedes this section on disk. Pad the rest of the
+; image to 40 tracks × 9 sectors × 512 bytes (180 KiB).
 times DISK_SIZE-BOOT_SECTOR_SIZE-($-$$) db 0

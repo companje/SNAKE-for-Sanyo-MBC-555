@@ -11,10 +11,10 @@ RED   equ 0f000h
 GREEN equ 0800h
 BLUE  equ 0f400h
 
-; Selecteer de schermgeometrie. Bij geen keuze is 576×200 de standaard.
+; Select the screen geometry. Without a choice, 576×200 is the default.
 %ifdef SIZE_640x200
   %ifdef SIZE_576x200
-    %error SIZE_640x200 en SIZE_576x200 kunnen niet tegelijk actief zijn
+    %error SIZE_640x200 and SIZE_576x200 cannot both be active
   %endif
 %else
   %ifndef SIZE_576x200
@@ -38,8 +38,8 @@ CRTC_INDEX_PORT equ 30h
 CRTC_DATA_PORT  equ 32h
 
 ; ---------------------------------------------------------------------------
-; Sector 1: draait op 0038:0000 en blijft daar resident.
-; Laadt stage 2 vanaf sector 2 naar 1000:0000.
+; Sector 1: runs at 0038:0000 and remains resident there.
+; Loads stage 2 from sector 2 into 1000:0000.
 ; ---------------------------------------------------------------------------
 section .boot start=0 vstart=0 align=1
 
@@ -52,7 +52,7 @@ boot:
 
   mov cx,APP_SECTORS
   mov bl,2
-  xor bp,bp                  ; huidige track
+  xor bp,bp                  ; current track
   mov ax,LOAD_SEG
   mov es,ax
   jmp short read_sector
@@ -60,14 +60,14 @@ boot:
 sector_done:
   loop more
 
-  ; Eenmalige stackinitialisatie na de laatste sector.
+  ; Initialize the stack once, after the final sector.
   mov ax,LOAD_SEG
   mov ss,ax
   mov sp,0fffeh
 
 %ifdef SIZE_640x200
-  ; De ROM heeft de 72-kolomsmodus al gezet. Voor 640×200 verschillen alleen
-  ; HD6845-registers 1, 2 en 3.
+  ; The ROM has already selected 72-column mode. For 640×200, only HD6845
+  ; registers 1, 2, and 3 differ.
   mov al,1
   out CRTC_INDEX_PORT,al
   mov al,80
@@ -86,18 +86,18 @@ sector_done:
 
 more:
   inc bl
-  cmp bl,10                  ; sectoren zijn genummerd 1..9
+  cmp bl,10                  ; sectors are numbered 1..9
   jb advance_load_address
 
   mov bl,1
-  inc bp                     ; volgende track
+  inc bp                     ; next track
   mov ax,bp
-  out 0eh,al                 ; nieuw tracknummer voor de FDC
+  out 0eh,al                 ; new track number for the FDC
   mov al,18h
   out 08h,al                 ; seek track, load head
   xor al,al
   out 1ch,al                 ; drive 0, side 0
-  aam                        ; korte wachttijd
+  aam                        ; brief delay
 
 .head_moving:
   in al,08h
@@ -106,7 +106,7 @@ more:
 
 advance_load_address:
   mov ax,es
-  add ax,20h                 ; volgende 512 bytes in RAM
+  add ax,20h                 ; next 512 bytes in RAM
   mov es,ax
 
 read_sector:
@@ -117,8 +117,8 @@ read_sector:
 %assign BOOTLOADER_BYTES $-$$
 
 ; ---------------------------------------------------------------------------
-; Sector 2 en verder: staan op disk direct na de bootsector, maar worden door
-; de loader naar 1000:0000 geladen. De entrypoint springt naar `setup` in
+; Sector 2 onwards: reside on disk directly after the boot sector, but are
+; loaded by the loader at 1000:0000. The entry point jumps to `setup` in
 ; app.asm.
 ; ---------------------------------------------------------------------------
 section .stage start=512 vstart=0 align=1

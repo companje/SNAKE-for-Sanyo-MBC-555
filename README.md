@@ -1,161 +1,155 @@
-# GSNAKE voor de Sanyo MBC-555
+# GSNAKE for the Sanyo MBC-555
 
-Een nieuwe 8088-port van **GSNAKE**, het Snake-spel dat oorspronkelijk in 1996
-voor DOS is geschreven. De bronversie draaide op een 386 in VGA mode 13h; dit
-project bouwt geen DOS-programma, maar een bootbare floppy-image voor de native
-videohardware van de Sanyo MBC-555.
+A new 8088 port of **GSNAKE**, the Snake game originally written for DOS in
+1996. The source version ran on a 386 in VGA mode 13h; this project builds a
+bootable floppy image for the native video hardware of the Sanyo MBC-555.
 
-De port is in een vroege fase. Het systeem boot, schakelt naar 640×200 en toont
-het omgezette menu. De eigenlijke spelinvoer, slanglogica, score, geluid en
-andere schermen moeten nog worden overgezet.
+## Purpose and starting point
 
-## Doel en uitgangspunt
+The original source is one directory above this project:
 
-De oorspronkelijke bron staat één map hoger:
+- `../GSNAKE.ASM` — the original TASM/MASM source;
+- `../GSNAKE-NASM.ASM` — an earlier NASM conversion of the DOS version;
+- `../MENU.DB` — the original VGA menu image.
 
-- `../GSNAKE.ASM` — oorspronkelijke TASM/MASM-bron;
-- `../GSNAKE-NASM.ASM` — eerder naar NASM-syntaxis omgezette DOS-versie;
-- `../MENU.DB` — originele VGA-menuafbeelding.
+The Sanyo version is independent from the DOS output. It is written for the
+real constraints of the MBC-555 and does not use BIOS or DOS video services.
 
-De Sanyo-versie staat geheel los van de DOS-uitvoer. De code in dit project is
-opgezet voor de echte beperkingen van de MBC-555 en gebruikt daarom geen BIOS-
-of DOS-videodiensten.
-
-| Onderdeel | Originele GSNAKE | Sanyo-port |
+| Component | Original GSNAKE | Sanyo port |
 | --- | --- | --- |
-| CPU | 80386-instructies mogelijk | 8088 / `cpu 8086` |
+| CPU | 80386 instructions possible | 8088 / `cpu 8086` |
 | Video | VGA mode 13h, 320×200 | Native Sanyo RGB, 640×200 |
-| Kleur | 256 paletkleuren | 3 bitplanes: rood, groen, blauw (8 kleuren) |
-| Programma | DOS `.COM` | bootbare 180 KiB floppy-image |
-| Videogeheugen | lineaire VGA-buffer op A000h | drie afzonderlijke, niet-lineair geordende planes |
+| Colour | 256-colour palette | Three bitplanes: red, green, blue (8 colours) |
+| Program | DOS `.COM` | Bootable 180 KiB floppy image |
+| Video memory | Linear VGA buffer at A000h | Three separately organised, non-linear planes |
 
-De overgang van 256 naar 8 kleuren is bewust niet geautomatiseerd. De PNGs in
-`assets/original-vga/` zijn uit de oude game geëxporteerd. Dithering en
-kleurreductie voor de Sanyo worden handmatig gemaakt en de resultaten gaan in
+Conversion from 256 to 8 colours is intentionally not automated. PNGs in
+`assets/original-vga/` are exported from the old game. Dithering and colour
+reduction for the Sanyo are performed manually; the results live in
 `assets/sanyo/`.
 
-## Huidige status
+## Current status
 
-De huidige `app.asm` doet het volgende:
+`app.asm` currently:
 
-1. start de 640×200-modus;
-2. wist de rode en groene bitplanes en vult de blauwe plane als achtergrond;
-3. toont bij het starten `assets/sanyo/menu-ok-w-dithered-384x116.pic`, gecentreerd op x=128, y=40;
-4. start het spel met `P` of spatie en keert bij een botsing terug naar het menu;
-5. leest WASD en de vier cursorpijlen op het Sanyo-cijferblok (8/4/5/6);
-6. tekent een bewegende, groeiende witte slang, een transparante gele voedselstip en een dubbelbrede ROM-score.
+1. starts 640×200 mode;
+2. displays the 400×116 Sanyo menu at startup;
+3. starts a game with `P` or Space and returns to the menu after a collision;
+4. supports WASD plus the Sanyo keypad cursor keys (8/4/5/6);
+5. draws a moving, growing white snake, patterned playfield border, transparent
+   yellow food ball, sprites, and a double-width ROM score;
+6. plays sounds for food and game over;
+7. shows credits with `Q` or `Esc`, from either the menu or the game.
 
-`menu-ok-w-dithered-384x116.pic` heeft geen header en bestaat uit drie lineaire
-planes in blauw–groen–rood-volgorde. Elke plane bevat `384 / 8 × 116 = 5.568`
-bytes.
+The menu image has no header and consists of three linear planes in blue,
+green, red order. Each plane is stored as conventional scanlines and converted
+to the Sanyo layout when drawn.
 
-## Sanyo-video en afbeeldingsimport
+## Sanyo video and image import
 
-De MBC-555 heeft vaste RGB-planes:
+The MBC-555 uses these RGB planes on real hardware:
 
 ```asm
 RED   equ 0f000h
-GREEN equ 0800h
+GREEN equ 01c00h
 BLUE  equ 0f400h
 ```
 
-In 640×200 bestaat een plane uit 50 blokken van vier scanlines. Een blok is
-320 bytes groot. De vier bytes van één horizontale bytekolom horen bij de vier
-scanlines van dat blok:
+In 640×200, one plane consists of 50 blocks of four scanlines. Each block is
+320 bytes. The four bytes of one horizontal byte column belong to the four
+scanlines of that block:
 
 ```text
-byte 0, 1, 2, 3   = dezelfde x-positie op y, y+1, y+2, y+3
-byte 4, 5, 6, 7   = volgende bytekolom op die vier scanlines
+byte 0, 1, 2, 3   = same x position at y, y+1, y+2, y+3
+byte 4, 5, 6, 7   = next byte column on those four scanlines
 ```
 
-Een gedeeltelijke afbeelding kan daardoor niet met één `rep movsw` worden
-gekopieerd. `copy_plane` in `app.asm` zet vier opeenvolgende bronregels om
-naar deze indeling en springt na elke afbeeldingrij naar de volgende
-320-byte-Sanyo-videorij.
+A partial image therefore cannot be copied with one `rep movsw`. The image
+copy routines in `app.asm` convert four consecutive source lines to this layout
+and advance to the next 320-byte Sanyo video row after each image row.
 
-Een afbeelding waarvan de hoogte of start-y geen veelvoud van vier is, vraagt
-om extra behandeling bij een blokgrens. Houd imports tijdens deze eerste fase
-daarom op een vier-scanlinegrens uitgelijnd.
+An image whose height or starting y coordinate is not a multiple of four needs
+extra handling at a block boundary. Keep early imports aligned to a
+four-scanline boundary where possible.
 
-## Bouwen en starten
+## Build and run
 
-Vereisten:
+Requirements:
 
 - NASM
-- MAME met de `mbc55x`-machine
+- MAME with the `mbc55x` machine
 
-Start de game interactief vanuit deze map:
+Start the game interactively from this directory:
 
 ```sh
 sh build.sh
 ```
 
-Dit bouwt `app.img` en opent die image in een MAME-venster. `build.sh` sluit
-eerst eventueel al draaiende MAME-processen.
+This builds `app.img` and opens it in a MAME window. `build.sh` first closes
+any already-running MAME processes.
 
-## Visuele regressiecontrole
+## Visual regression checks
 
-Gebruik na iedere aanpassing aan graphics of videogeheugen:
+Use this after each change to graphics or video memory:
 
 ```sh
 ./capture.sh
 ```
 
-Dit bouwt de image, start MAME zichtbaar voor drie seconden en slaat via
-MAMEs ingebouwde snapshotfunctie het eindframe op als:
+It builds the image, launches MAME visibly for three seconds, and saves MAME's
+final frame through its built-in snapshot feature as:
 
 ```text
 captures/gsnake.png
 ```
 
-De screenshot is native 640×200 en niet gefilterd. Een andere zichtbare duur
-kan als argument:
+The screenshot is native 640×200 and unfiltered. Pass a different visible
+duration if needed:
 
 ```sh
 ./capture.sh 5
 ```
 
-Deze capture-workflow is de voorkeursmanier om beeldconversies te controleren;
-alleen assembleren is voor grafische wijzigingen niet voldoende.
+This capture workflow is the preferred way to check image conversion; merely
+assembling is insufficient for graphical changes.
 
-## Werkafspraken
+## Working conventions
 
-- Maak na iedere afgeronde, werkende stap een kleine Git-commit met een
-  beschrijvende boodschap. Meng geen ongerelateerde wijzigingen in zo een
-  commit.
-- Bouw wijzigingen aan graphics, bitplanes of video-RAM altijd met
-  `./capture.sh` en controleer `captures/gsnake.png` voordat je commit.
-- Raadpleeg bij het porten van spelgedrag eerst `../GSNAKE-NASM.ASM`; neem de
-  logica over, maar herschrijf VGA- en 386-specifieke code voor de 8088 en de
-  Sanyo-VRAM-layout.
+- Make a small Git commit with a descriptive message after each completed,
+  working step. Do not mix unrelated changes into it.
+- Always build graphics, bitplane, or video-RAM changes with `./capture.sh` and
+  inspect `captures/gsnake.png` before committing.
+- When porting game behaviour, consult `../GSNAKE-NASM.ASM` first. Reuse the
+  logic, but rewrite VGA- and 386-specific code for the 8088 and Sanyo VRAM
+  layout.
 
-## Bestanden
+## Files
 
-| Pad | Rol |
+| Path | Purpose |
 | --- | --- |
-| `app.asm` | Huidige GSNAKE-port en video-importcode |
-| `header.asm` | Bootsector, floppy-loader, Sanyo-constanten en CRTC-initialisatie |
-| `footer.asm` | Sector- en floppy-padding |
-| `build.sh` | Bouwt en start MAME interactief |
-| `capture.sh` | Bouwt, draait MAME kort en schrijft een screenshot |
-| `assets/original-vga/` | Ongewijzigde PNG-export van de oude VGA-assets |
-| `assets/sanyo/` | Handmatig gereduceerde/dithered Sanyo-assets en `.pic`-data |
+| `app.asm` | Current GSNAKE port and video-import code |
+| `header.asm` | Boot sector, floppy loader, Sanyo constants, and CRTC setup |
+| `footer.asm` | Sector and floppy padding |
+| `build.sh` | Builds and starts MAME interactively |
+| `capture.sh` | Builds, runs MAME briefly, and writes a screenshot |
+| `assets/original-vga/` | Unmodified PNG exports of the original VGA assets |
+| `assets/sanyo/` | Manually reduced/dithered Sanyo assets and `.pic` data |
 
-`layout-test.asm` en `scanline-test.asm` zijn kleine hardwarediagnoses voor de
-Sanyo-VRAM-layout. Ze zijn nuttig als referentie, maar zijn geen onderdeel van
-het spel zelf.
+`layout-test.asm` and `scanline-test.asm` are small hardware diagnostics for
+the Sanyo VRAM layout. They are useful references, but are not part of the
+game itself.
 
-## Grenzen en volgende stappen
+## Limits and next steps
 
-De port mag niet terugvallen op 386-instructies, VGA-registers of een
-256-kleurenpalet. Houd nieuwe code compact: de 8088 is trager en de boot-image
-past op een enkelzijdige 180 KiB-floppy.
+The port must not fall back on 386 instructions, VGA registers, or a
+256-colour palette. Keep new code compact: the 8088 is slower and the boot
+image must fit on a single-sided 180 KiB floppy.
 
-Logische vervolgstappen zijn:
+Logical next steps include:
 
-1. pauzestand en sprites porten;
-2. timing en moeilijkheidsgraad verfijnen;
-3. elke grafische stap controleren met `./capture.sh`.
+1. a pause mode;
+2. timing and difficulty refinement;
+3. checking every graphical step with `./capture.sh`.
 
-Gegenereerde `*.img`, `*.lst` en `captures/`-bestanden horen normaal niet in
-een commit.
+Generated `*.img`, `*.lst`, and `captures/` files should normally not be
+committed.
