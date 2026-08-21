@@ -152,7 +152,7 @@ assembling is insufficient for graphical changes.
 | `footer.asm` | Sector and floppy padding |
 | `build.sh` | Builds and starts MAME interactively |
 | `capture.sh` | Builds, runs MAME briefly, and writes a screenshot |
-| `assets/original-vga/` | Unmodified PNG exports of the original VGA assets |
+| `assets/original-vga/` | Unmodified PNG exports of the original VGA assets (extracted from sourcecode) |
 | `assets/sanyo/` | Manually reduced/dithered Sanyo assets and `.pic` data |
 
 `layout-test.asm` and `scanline-test.asm` are small hardware diagnostics for
