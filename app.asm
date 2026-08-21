@@ -25,10 +25,10 @@ SPRITE_NORMAL     equ 0
 SPRITE_FOOD       equ 1
 SPRITE_GAME_OVER  equ 2
 PAUSE_WIDTH  equ 240
-PAUSE_HEIGHT equ 84
+PAUSE_HEIGHT equ 40
 PAUSE_BYTES  equ PAUSE_WIDTH / 8
 PAUSE_ROWS   equ PAUSE_HEIGHT / 4
-PAUSE_OFFSET equ (56 / 4) * ROW_BYTES + ((WIDTH - PAUSE_WIDTH) / 16) * 4
+PAUSE_OFFSET equ (80 / 4) * ROW_BYTES + ((WIDTH - PAUSE_WIDTH) / 16) * 4
 ; The Sanyo layout requires a byte-aligned x position. This is x=304,
 ; four pixels to the right of the exact centre.
 SPRITE_OFFSET equ ((WIDTH - SPRITE_WIDTH + 8) / 16) * 4
@@ -216,7 +216,7 @@ copy_menu_plane:
   jnz .row
   ret
 
-; Draw the 240x84 pause image centred over the playfield. It is aligned to a
+; Draw the 240x40 pause image centred over the playfield. It is aligned to a
 ; four-scanline Sanyo row, just like the menu image.
 draw_pause:
   push ax
@@ -1434,6 +1434,6 @@ sprite3_pic:
 
 ; Three conventional scanline planes in B, G, R order.
 pause_pic:
-  incbin "assets/sanyo/pause-dithered-240x84.pic"
+  incbin "assets/sanyo/pause-dithered-240x40.pic"
 
 %include "footer.asm"
