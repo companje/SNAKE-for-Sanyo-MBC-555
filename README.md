@@ -1,4 +1,4 @@
-# SNAKE for the Sanyo MBC-555
+# SNAKE for the Sanyo MBC-550/555
 
 <p>
   <img src="doc/gnsake-menu.png" alt="GSNAKE menu on the Sanyo MBC-555" width="49%">
