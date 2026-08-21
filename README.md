@@ -89,6 +89,20 @@ sh build.sh
 This builds `app.img` and opens it in a MAME window. `build.sh` first closes
 any already-running MAME processes.
 
+## Keyboard diagnostic
+
+To inspect the raw bytes sent by the Sanyo keyboard, build the standalone
+diagnostic image:
+
+```sh
+sh build-keydebug.sh
+```
+
+Boot `keydebug.img` on the real machine. Every received byte is shown as
+`RX: XX`, together with the UART status value that preceded its acknowledgement.
+Press each physical cursor key with Num Lock off and note every displayed `RX`
+value; multiple lines for one key indicate a multi-byte sequence.
+
 ## Visual regression checks
 
 Use this after each change to graphics or video memory:
