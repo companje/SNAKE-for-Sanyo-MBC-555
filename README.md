@@ -116,6 +116,17 @@ kan als argument:
 Deze capture-workflow is de voorkeursmanier om beeldconversies te controleren;
 alleen assembleren is voor grafische wijzigingen niet voldoende.
 
+## Werkafspraken
+
+- Maak na iedere afgeronde, werkende stap een kleine Git-commit met een
+  beschrijvende boodschap. Meng geen ongerelateerde wijzigingen in zo een
+  commit.
+- Bouw wijzigingen aan graphics, bitplanes of video-RAM altijd met
+  `./capture.sh` en controleer `captures/gsnake.png` voordat je commit.
+- Raadpleeg bij het porten van spelgedrag eerst `../GSNAKE-NASM.ASM`; neem de
+  logica over, maar herschrijf VGA- en 386-specifieke code voor de 8088 en de
+  Sanyo-VRAM-layout.
+
 ## Bestanden
 
 | Pad | Rol |
