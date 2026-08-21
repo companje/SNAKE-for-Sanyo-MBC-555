@@ -34,7 +34,8 @@ reduction for the Sanyo are performed manually; the results live in
 
 1. starts 640×200 mode;
 2. displays the 400×116 Sanyo menu at startup;
-3. starts a game with `P` or Space and returns to the menu after a collision;
+3. starts a game with `P` or Space, pauses and resumes with `P`, and returns
+   to the menu after a collision;
 4. supports WASD plus the Sanyo keypad cursor keys (8/4/5/6);
 5. draws a moving, growing white snake, patterned playfield border, transparent
    yellow food ball, sprites, and a double-width ROM score;

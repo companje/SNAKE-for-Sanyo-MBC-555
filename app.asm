@@ -24,6 +24,11 @@ FOOD_SPRITE_TICKS equ 128      ; approximately two seconds at the current game-l
 SPRITE_NORMAL     equ 0
 SPRITE_FOOD       equ 1
 SPRITE_GAME_OVER  equ 2
+PAUSE_WIDTH  equ 240
+PAUSE_HEIGHT equ 84
+PAUSE_BYTES  equ PAUSE_WIDTH / 8
+PAUSE_ROWS   equ PAUSE_HEIGHT / 4
+PAUSE_OFFSET equ (56 / 4) * ROW_BYTES + ((WIDTH - PAUSE_WIDTH) / 16) * 4
 ; The Sanyo layout requires a byte-aligned x position. This is x=304,
 ; four pixels to the right of the exact centre.
 SPRITE_OFFSET equ ((WIDTH - SPRITE_WIDTH + 8) / 16) * 4
@@ -117,6 +122,19 @@ game_loop:
   loop .delay
   jmp game_loop
 
+; Pause on P. Redraw the game after the overlay is dismissed, because the
+; pause picture overwrites the part of the playfield beneath it.
+pause_game:
+  call draw_pause
+.wait_key:
+  call check_keys
+  jz .wait_key
+  and al,5fh
+  cmp al,'P'
+  jne .wait_key
+  call redraw_game
+  ret
+
 ; Show the credits using the regular 8x8 ROM font and wait for one key.
 credits_screen:
   call clear_screen_black
@@ -194,6 +212,52 @@ copy_menu_plane:
   loop .column
   add di,ROW_BYTES - MENU_BYTES * 4
   add si,MENU_BYTES * 4
+  dec bp
+  jnz .row
+  ret
+
+; Draw the 240x84 pause image centred over the playfield. It is aligned to a
+; four-scanline Sanyo row, just like the menu image.
+draw_pause:
+  push ax
+  push si
+  push es
+  mov si,pause_pic
+  mov ax,BLUE
+  mov es,ax
+  call copy_pause_plane
+  mov ax,GREEN
+  mov es,ax
+  call copy_pause_plane
+  mov ax,RED
+  mov es,ax
+  call copy_pause_plane
+  pop es
+  pop si
+  pop ax
+  ret
+
+; Convert one linear PAUSE_WIDTHxPAUSE_HEIGHT colour plane to Sanyo VRAM.
+copy_pause_plane:
+  mov di,PAUSE_OFFSET
+  mov bp,PAUSE_ROWS
+.row:
+  mov bx,si
+  mov cx,PAUSE_BYTES
+.column:
+  mov al,[bx]
+  mov es:[di],al
+  mov al,[bx + PAUSE_BYTES]
+  mov es:[di + 1],al
+  mov al,[bx + PAUSE_BYTES * 2]
+  mov es:[di + 2],al
+  mov al,[bx + PAUSE_BYTES * 3]
+  mov es:[di + 3],al
+  inc bx
+  add di,4
+  loop .column
+  add di,ROW_BYTES - PAUSE_BYTES * 4
+  add si,PAUSE_BYTES * 4
   dec bp
   jnz .row
   ret
@@ -293,6 +357,8 @@ read_keyboard:
   and al,5fh                 ; convert ASCII to uppercase
   cmp al,'Q'
   je credits_screen
+  cmp al,'P'
+  je pause_game
   cmp al,'W'
   je .up
   cmp al,'8'
@@ -385,6 +451,27 @@ reset_game:
   inc di
   loop .initial_cell
   mov word [food_offset],FOOD_INITIAL
+  call draw_food
+  ret
+
+; Reconstruct the playfield after closing the pause overlay. Snake positions
+; remain in the external ring buffer while the game is paused.
+redraw_game:
+  call clear_screen
+  call clear_top_margin
+  call draw_playfield
+  call draw_score
+  mov bx,[snake_head_index]
+  mov cx,[snake_length]
+.snake_segment:
+  call read_snake_position
+  call draw_white_dot
+  inc bx
+  cmp bx,SNAKE_CELLS
+  jb .next_segment
+  xor bx,bx
+.next_segment:
+  loop .snake_segment
   call draw_food
   ret
 
@@ -1344,5 +1431,9 @@ sprite2_pic:
 ; Drie conventionele scanline-planes in B, G, R-volgorde.
 sprite3_pic:
   incbin "assets/sanyo/sprite3-dithered-32x8.pic"
+
+; Three conventional scanline planes in B, G, R order.
+pause_pic:
+  incbin "assets/sanyo/pause-dithered-240x84.pic"
 
 %include "footer.asm"
