@@ -728,7 +728,7 @@ is_outside_playfield:
   ja .outside
   cmp ax,2
   jne .not_top_block
-  cmp si,2                    ; y=8/9 valt op of boven de bovenrand
+  cmp si,1                    ; alleen y=8 valt op de bovenrand
   jb .outside
 .not_top_block:
   cmp ax,49
