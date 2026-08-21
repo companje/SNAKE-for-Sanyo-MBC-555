@@ -15,6 +15,7 @@ MENU_OFFSET equ (40 / 4) * ROW_BYTES + ((640 - 336) / 16) * 4
 ; Eén slangsegment is 2x1 schermpixels: horizontaal verdubbeld, maar één
 ; scanline hoog zoals het oorspronkelijke spel.
 SNAKE_CELLS       equ 128
+SNAKE_MAX_LEN     equ SNAKE_CELLS - 1
 SNAKE_INITIAL_LEN equ 14
 SNAKE_START       equ ((100 / 4) * ROW_BYTES + (200 / 8) * 4) << 2
 FOOD_INITIAL      equ (100 / 4) * ROW_BYTES + (304 / 8) * 4
@@ -278,12 +279,16 @@ move_snake:
 
   cmp word [growth_remaining],0
   je .erase_tail
+  cmp word [snake_length],SNAKE_MAX_LEN
+  jae .growth_limit
   dec word [growth_remaining]
   inc word [snake_length]
-  cmp byte [ate_food],0
-  je .ok
-  call place_food
-  jmp short .ok
+  jmp short .after_tail
+
+.growth_limit:
+  ; Houd één vrije positie in de ringbuffer. Bij de limiet beweegt de
+  ; staart door en stapelt resterende groei niet verder op.
+  mov word [growth_remaining],0
 
 .erase_tail:
   ; Na het invoegen staat de oude staart op head_index + lengte.
@@ -296,6 +301,10 @@ move_snake:
   shl bx,1
   mov ax,[snake_positions + bx]
   call clear_dot
+.after_tail:
+  cmp byte [ate_food],0
+  je .ok
+  call place_food
 .ok:
   clc
   ret
