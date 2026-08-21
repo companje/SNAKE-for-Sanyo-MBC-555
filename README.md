@@ -5,7 +5,7 @@
   <img src="doc/gsnake-play-pause.png" alt="GSNAKE gameplay with the pause overlay" width="49%">
 </p>
 
-A new 8088 port of **GSNAKE**, the Snake game originally written for DOS in
+A new 8088 port of **GSNAKE**, a Snake game originally written for DOS in
 1996. The source version ran on a 386 in VGA mode 13h; this project builds a
 bootable floppy image for the native video hardware of the Sanyo MBC-555.
 
