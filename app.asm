@@ -82,9 +82,13 @@ menu_screen:
 menu_loop:
   call check_keys
   jz menu_loop
+  cmp al,KEY_ESCAPE
+  je credits_screen
   cmp al,' '
   je start_game
   and al,5fh
+  cmp al,'Q'
+  je credits_screen
   cmp al,'P'
   jne menu_loop
 start_game:
@@ -1174,6 +1178,7 @@ draw_normal_char:
   push bx
   push cx
   push dx
+  push di
   push si
   push bp
   push es
@@ -1213,6 +1218,7 @@ draw_normal_char:
   pop es
   pop bp
   pop si
+  pop di
   pop dx
   pop cx
   pop bx
