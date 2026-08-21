@@ -1420,19 +1420,19 @@ credits_line1 db 'SNAKE.COM v1.00  by Rick Companje 17-12-1996',0
 credits_line2 db 'Copyright (C) 1996  TMR Software Productions',0
 credits_line3 db 'Rewritten with love in 2026 for the Sanyo MBC-550/555. Sanyo 4-ever!',0
 
-; Drie conventionele scanline-planes in B, G, R-volgorde.
+; Three conventional scanline planes in B, G, R order.
 menu_pic:
   incbin "assets/sanyo/menu-ok-400-dithered-400x116.pic"
 
-; Drie conventionele scanline-planes in B, G, R-volgorde.
+; Three conventional scanline planes in B, G, R order.
 sprite1_pic:
   incbin "assets/sanyo/sprite1-dithered-32x8.pic"
 
-; Drie conventionele scanline-planes in B, G, R-volgorde.
+; Three conventional scanline planes in B, G, R order.
 sprite2_pic:
   incbin "assets/sanyo/sprite2-dithered-32x8.pic"
 
-; Drie conventionele scanline-planes in B, G, R-volgorde.
+; Three conventional scanline planes in B, G, R order.
 sprite3_pic:
   incbin "assets/sanyo/sprite3-dithered-32x8.pic"
 
