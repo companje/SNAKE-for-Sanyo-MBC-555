@@ -30,7 +30,7 @@ real constraints of the MBC-555 and does not use BIOS or DOS video services.
 
 Conversion from 256 to 8 colours is intentionally not automated. PNGs in
 `assets/original-vga/` are exported from the old game. Dithering and colour
-reduction for the Sanyo are performed manually; the results live in
+reduction for the Sanyo are performed externally with Photoshop, Aseprite and [Ditherit.com](https://ditherit.com/)); the results live in
 `assets/sanyo/`.
 
 ## Current status
