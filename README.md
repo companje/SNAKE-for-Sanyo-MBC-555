@@ -40,13 +40,14 @@ De huidige `app.asm` doet het volgende:
 
 1. start de 640×200-modus;
 2. wist de rode en groene bitplanes en vult de blauwe plane als achtergrond;
-3. toont bij het starten `assets/sanyo/menu-ok-336x116.pic`, gecentreerd op x=152, y=40;
+3. toont bij het starten `assets/sanyo/menu-ok-w-dithered-384x116.pic`, gecentreerd op x=128, y=40;
 4. start het spel met `P` of spatie en keert bij een botsing terug naar het menu;
 5. leest WASD en de vier cursorpijlen op het Sanyo-cijferblok (8/4/5/6);
 6. tekent een bewegende, groeiende witte slang, een transparante gele voedselstip en een dubbelbrede ROM-score.
 
-`menu-ok-336x116.pic` heeft geen header en bestaat uit drie lineaire planes in
-blauw–groen–rood-volgorde. Elke plane bevat `336 / 8 × 116 = 4.872` bytes.
+`menu-ok-w-dithered-384x116.pic` heeft geen header en bestaat uit drie lineaire
+planes in blauw–groen–rood-volgorde. Elke plane bevat `384 / 8 × 116 = 5.568`
+bytes.
 
 ## Sanyo-video en afbeeldingsimport
 

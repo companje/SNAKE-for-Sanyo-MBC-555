@@ -7,10 +7,12 @@ FIELD_BOTTOM equ 199
 FIELD_LEFT   equ 0
 FIELD_RIGHT  equ 639
 
-MENU_BYTES  equ 336 / 8
-MENU_ROWS   equ 116 / 4
-MENU_PLANE  equ MENU_BYTES * 116
-MENU_OFFSET equ (40 / 4) * ROW_BYTES + ((640 - 336) / 16) * 4
+MENU_WIDTH  equ 384
+MENU_HEIGHT equ 116
+MENU_BYTES  equ MENU_WIDTH / 8
+MENU_ROWS   equ MENU_HEIGHT / 4
+MENU_PLANE  equ MENU_BYTES * MENU_HEIGHT
+MENU_OFFSET equ (40 / 4) * ROW_BYTES + ((WIDTH - MENU_WIDTH) / 16) * 4
 SCORE_X     equ WIDTH - 8 - (3 * 16)
 SCORE_OFFSET equ (SCORE_X / 8) * 4
 
@@ -123,7 +125,8 @@ show_menu:
   call copy_menu_plane
   ret
 
-; Zet een lineaire 336x116-plane om naar Sanyo's vier-scanline-indeling.
+; Zet een lineaire MENU_WIDTH×MENU_HEIGHT-plane om naar Sanyo's
+; vier-scanline-indeling.
 copy_menu_plane:
   mov di,MENU_OFFSET
   mov bp,MENU_ROWS
@@ -1068,6 +1071,6 @@ key:
 
 ; Drie conventionele scanline-planes in B, G, R-volgorde.
 menu_pic:
-  incbin "assets/sanyo/menu-ok-336x116.pic"
+  incbin "assets/sanyo/menu-ok-w-dithered-384x116.pic"
 
 %include "footer.asm"
