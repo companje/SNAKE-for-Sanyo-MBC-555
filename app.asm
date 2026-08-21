@@ -7,7 +7,7 @@ FIELD_BOTTOM equ 199
 FIELD_LEFT   equ 0
 FIELD_RIGHT  equ 639
 
-MENU_WIDTH  equ 384
+MENU_WIDTH  equ 400
 MENU_HEIGHT equ 116
 MENU_BYTES  equ MENU_WIDTH / 8
 MENU_ROWS   equ MENU_HEIGHT / 4
@@ -15,11 +15,12 @@ MENU_PLANE  equ MENU_BYTES * MENU_HEIGHT
 MENU_OFFSET equ (40 / 4) * ROW_BYTES + ((WIDTH - MENU_WIDTH) / 16) * 4
 SCORE_X     equ WIDTH - 8 - (3 * 16)
 SCORE_OFFSET equ (SCORE_X / 8) * 4
-SPRITE_WIDTH  equ 40
+SPRITE_WIDTH  equ 32
 SPRITE_HEIGHT equ 8
 SPRITE_BYTES  equ SPRITE_WIDTH / 8
 SPRITE_ROWS   equ SPRITE_HEIGHT / 4
 SPRITE_PLANE  equ SPRITE_BYTES * SPRITE_HEIGHT
+FOOD_SPRITE_TICKS equ 128      ; circa twee seconden bij de huidige spellus
 ; De Sanyo-indeling vereist een byte-uitgelijnde x-positie. Dit is x=304,
 ; vier pixels rechts van het exacte midden.
 SPRITE_OFFSET equ ((WIDTH - SPRITE_WIDTH + 8) / 16) * 4
@@ -90,6 +91,7 @@ game_loop:
   call play_crash_sound
   jmp menu_screen
 .keep_playing:
+  call update_top_sprite
   mov cx,MOVE_DELAY
 .delay:
   loop .delay
@@ -159,7 +161,7 @@ copy_menu_plane:
   jnz .row
   ret
 
-; Teken de 40x8-sprite gecentreerd in de zwarte marge boven het speelveld.
+; Teken de actieve 32x8-sprite gecentreerd in de zwarte marge boven het speelveld.
 draw_top_sprite:
   push ax
   push bx
@@ -169,7 +171,11 @@ draw_top_sprite:
   push di
   push bp
   push es
-  mov si,sprite_pic
+  mov si,sprite1_pic
+  cmp word [food_sprite_ticks],0
+  je .draw
+  mov si,sprite2_pic
+.draw:
   mov ax,BLUE
   mov es,ax
   call copy_sprite_plane
@@ -213,6 +219,16 @@ copy_sprite_plane:
   add si,SPRITE_BYTES * 4
   dec bp
   jnz .row
+  ret
+
+; Laat sprite 2 na voedsel tijdelijk zien en herstel daarna sprite 1.
+update_top_sprite:
+  cmp word [food_sprite_ticks],0
+  je .done
+  dec word [food_sprite_ticks]
+  jnz .done
+  call draw_top_sprite
+.done:
   ret
 
 ; Lees hoogstens één getypte toets. Naast WASD werken de vier fysieke
@@ -303,6 +319,7 @@ reset_game:
   mov word [snake_length],SNAKE_INITIAL_LEN
   mov word [growth_remaining],0
   mov word [score],0
+  mov word [food_sprite_ticks],0
   mov byte [snake_direction],DIR_RIGHT
   mov byte [boost_moves],0
   call draw_score
@@ -368,6 +385,7 @@ move_snake:
   jb .score_in_range
   mov word [score],0
 .score_in_range:
+  mov word [food_sprite_ticks],FOOD_SPRITE_TICKS
   call draw_score
   add word [growth_remaining],GROWTH_PER_FOOD
   mov byte [ate_food],1
@@ -1125,6 +1143,7 @@ snake_head_index: dw 0
 snake_length:     dw SNAKE_INITIAL_LEN
 growth_remaining: dw 0
 score:            dw 0
+food_sprite_ticks: dw 0
 food_offset:      dw FOOD_INITIAL
 random_seed:      dw 0ace1h
 snake_positions:  times SNAKE_CELLS dw 0
@@ -1136,10 +1155,14 @@ key:
 
 ; Drie conventionele scanline-planes in B, G, R-volgorde.
 menu_pic:
-  incbin "assets/sanyo/menu-ok-w-dithered-384x116.pic"
+  incbin "assets/sanyo/menu-ok-400-dithered-400x116.pic"
 
 ; Drie conventionele scanline-planes in B, G, R-volgorde.
-sprite_pic:
-  incbin "assets/sanyo/sprite1-dithered-40x8.pic"
+sprite1_pic:
+  incbin "assets/sanyo/sprite1-dithered-32x8.pic"
+
+; Drie conventionele scanline-planes in B, G, R-volgorde.
+sprite2_pic:
+  incbin "assets/sanyo/sprite2-dithered-32x8.pic"
 
 %include "footer.asm"
