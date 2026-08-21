@@ -450,10 +450,12 @@ move_snake:
   ret
 
 ; Kies een lege byte-uitgelijnde 8x4-positie binnen het kader met een LFSR.
+; Ongeldige waarden worden opnieuw getrokken: zo blijft elke positie gelijkmatig
+; verdeeld, zonder een voorkeur voor de linkerkant.
 place_food:
 .try_again:
   mov ax,[random_seed]
-  shl ax,1
+  shr ax,1
   jnc .no_tap
   xor ax,0b400h
 .no_tap:
@@ -463,9 +465,7 @@ place_food:
   mov bx,ax
   and bx,007fh
   cmp bx,78
-  jb .column_ok
-  sub bx,78
-.column_ok:
+  jae .try_again
   inc bx
   shl bx,1
   shl bx,1
@@ -476,9 +476,7 @@ place_food:
   shr ax,cl
   and ax,003fh
   cmp ax,46
-  jb .row_ok
-  sub ax,46
-.row_ok:
+  jae .try_again
   add ax,3
   mov bx,ax
   shl ax,1
