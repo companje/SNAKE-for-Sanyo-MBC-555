@@ -40,9 +40,10 @@ De huidige `app.asm` doet het volgende:
 
 1. start de 640×200-modus;
 2. wist de rode en groene bitplanes en vult de blauwe plane als achtergrond;
-3. importeert `assets/sanyo/menu-ok-336x116.pic` via één `incbin`;
-4. zet de lineaire BGR-data om naar de Sanyo-VRAM-layout;
-5. toont het menu gecentreerd op x=152, y=40. De verticale positie ligt twee pixels boven het exacte midden om op een vier-scanlinegrens te blijven.
+3. toont bij het starten `assets/sanyo/menu-ok-336x116.pic`, gecentreerd op x=152, y=40;
+4. start het spel met `P` of spatie en keert bij een botsing terug naar het menu;
+5. leest WASD en de vier cursorpijlen op het Sanyo-cijferblok (8/4/5/6);
+6. tekent een bewegende, groeiende witte slang en een transparante gele voedselstip.
 
 `menu-ok-336x116.pic` heeft geen header en bestaat uit drie lineaire planes in
 blauw–groen–rood-volgorde. Elke plane bevat `336 / 8 × 116 = 4.872` bytes.
@@ -151,11 +152,10 @@ past op een enkelzijdige 180 KiB-floppy.
 
 Logische vervolgstappen zijn:
 
-1. het menu met echte invoer en de definitieve menuflow verbinden;
-2. invoer en menu-keuzes op de Sanyo-toetsenbordhardware aansluiten;
-3. speelveld en slang tekenen met 3-bit-kleurassets;
-4. timing, botsingen, score en geluid uit de originele game porten;
-5. elke grafische stap controleren met `./capture.sh`.
+1. de score en het lettertype uit de ROM overzetten;
+2. pauzestand, sprites en geluid porten;
+3. timing en moeilijkheidsgraad verfijnen;
+4. elke grafische stap controleren met `./capture.sh`.
 
 Gegenereerde `*.img`, `*.lst` en `captures/`-bestanden horen normaal niet in
 een commit.
