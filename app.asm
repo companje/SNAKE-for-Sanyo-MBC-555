@@ -12,12 +12,12 @@ MENU_ROWS   equ 116 / 4
 MENU_PLANE  equ MENU_BYTES * 116
 MENU_OFFSET equ (40 / 4) * ROW_BYTES + ((640 - 336) / 16) * 4
 
-; Eén slangsegment is 2x2 schermpixels: één oorspronkelijke pixel met de
-; verticale verdubbeling die bij de 1:2-pixelverhouding past.
+; Eén slangsegment is 2x1 schermpixels: horizontaal verdubbeld, maar één
+; scanline hoog zoals het oorspronkelijke spel.
 SNAKE_CELLS       equ 128
 SNAKE_INITIAL_LEN equ 8
-SNAKE_START       equ (50 << 9) + 100 ; y/2=50, x/2=100
-FOOD_INITIAL      equ (50 << 9) + 120 ; y/2=50, x/2=120
+SNAKE_START       equ ((100 / 4) * ROW_BYTES + (200 / 8) * 4) << 2
+FOOD_INITIAL      equ (100 / 4) * ROW_BYTES + (304 / 8) * 4
 GROWTH_PER_FOOD   equ 4
 MOVE_DELAY        equ 22000
 
@@ -30,26 +30,30 @@ DIR_DOWN  equ 3
 KBD_DATA    equ 38h
 KBD_CONTROL equ 3ah
 KBD_RX_READY equ 02h
+KEY_LEFT    equ 1ch
+KEY_RIGHT   equ 1dh
+KEY_UP      equ 1eh
+KEY_DOWN    equ 1fh
 
 setup:
   push cs
   pop ds
-  call init_keyboard
+  call init_menu_keyboard
   jmp menu_screen
 
 menu_screen:
+  call init_menu_keyboard
   call show_menu
 menu_loop:
-  in al,KBD_CONTROL
-  test al,KBD_RX_READY
+  call check_keys
   jz menu_loop
-  in al,KBD_DATA
   cmp al,' '
   je start_game
   and al,5fh
   cmp al,'P'
   jne menu_loop
 start_game:
+  call init_game_keyboard
   call reset_game
 
 game_loop:
@@ -63,14 +67,26 @@ game_loop:
   loop .delay
   jmp game_loop
 
-; Zet de 8251 in asynchrone 8N?E2 ontvangst op 1.230 baud. De Sanyo-ROM
-; vertaalt deze ASCII-toetsen normaal naar XT-codes; de game leest ze direct.
-init_keyboard:
-  mov al,40h                 ; interne reset: volgende byte is de mode
+; De menu-UART levert ASCII voor P en spatie.
+init_menu_keyboard:
+  mov al,40h
   out KBD_CONTROL,al
   mov al,0bfh                ; 8 bit, even parity, 2 stopbits, klok /64
   out KBD_CONTROL,al
   mov al,14h                 ; receive enable + error reset
+  out KBD_CONTROL,al
+  ret
+
+; De spel-UART-configuratie levert de fysieke Sanyo-cursortoetsen als
+; ASCII-controlcodes 1Ch..1Fh.
+init_game_keyboard:
+  xor al,al
+  out KBD_CONTROL,al
+  out KBD_CONTROL,al
+  mov al,0ffh
+  out KBD_CONTROL,al
+  out KBD_CONTROL,al
+  mov al,37h
   out KBD_CONTROL,al
   ret
 
@@ -118,10 +134,16 @@ copy_menu_plane:
 ; cursorpijlen op het Sanyo-cijferblok: 8 omhoog, 4 links, 5 omlaag, 6 rechts.
 ; Een tegengestelde richting wordt genegeerd.
 read_keyboard:
-  in al,KBD_CONTROL
-  test al,KBD_RX_READY
+  call check_keys
   jz .done
-  in al,KBD_DATA
+  cmp al,KEY_UP
+  je .up
+  cmp al,KEY_DOWN
+  je .down
+  cmp al,KEY_LEFT
+  je .left
+  cmp al,KEY_RIGHT
+  je .right
   and al,5fh                 ; ASCII naar hoofdletter
   cmp al,'W'
   je .up
@@ -161,6 +183,23 @@ read_keyboard:
 .done:
   ret
 
+; Retourneert Z=0 wanneer AL een nieuwe toetscode bevat.
+check_keys:
+  in al,KBD_CONTROL
+  mov ah,al
+  and al,00001000b
+  mov [cs:key.ctrl],al
+  test ah,KBD_RX_READY
+  jz .return
+  in al,KBD_DATA
+  mov [cs:key.code],al
+  mov al,37h
+  out KBD_CONTROL,al
+  or al,1
+  mov ax,[cs:key]
+.return:
+  ret
+
 reset_game:
   call clear_screen
   call draw_playfield
@@ -177,10 +216,10 @@ reset_game:
   push ax
   call draw_white_dot
   pop ax
-  dec ax
+  call step_left
   add di,2
   loop .initial_cell
-  mov word [food_position],FOOD_INITIAL
+  mov word [food_offset],FOOD_INITIAL
   call draw_food
   ret
 
@@ -191,28 +230,29 @@ move_snake:
   mov ax,[snake_positions + bx]
   cmp byte [snake_direction],DIR_RIGHT
   jne .not_right
-  inc ax
+  call step_right
   jmp short .new_head
 .not_right:
   cmp byte [snake_direction],DIR_LEFT
   jne .not_left
-  dec ax
+  call step_left
   jmp short .new_head
 .not_left:
   cmp byte [snake_direction],DIR_UP
   jne .down
-  sub ax,512
+  call step_up
   jmp short .new_head
 .down:
-  add ax,512
+  call step_down
 .new_head:
-  cmp ax,[food_position]
-  je .eat_food
+  mov byte [ate_food],0
+  call is_food_at_position
+  jc .eat_food
 
   ; De rode plane is alleen nul op de blauwe achtergrond. Kader en lichaam
   ; zijn er beide wit en veroorzaken dus een botsing.
   push ax
-  call position_to_vram
+  call packed_to_vram
   mov bx,RED
   mov es,bx
   test byte [es:di],al
@@ -221,6 +261,7 @@ move_snake:
   jmp short .insert_head
 .eat_food:
   add word [growth_remaining],GROWTH_PER_FOOD
+  mov byte [ate_food],1
 .insert_head:
   mov bx,[snake_head_index]
   or bx,bx
@@ -237,8 +278,8 @@ move_snake:
   je .erase_tail
   dec word [growth_remaining]
   inc word [snake_length]
-  cmp ax,[food_position]
-  jne .ok
+  cmp byte [ate_food],0
+  je .ok
   call place_food
   jmp short .ok
 
@@ -260,7 +301,7 @@ move_snake:
   stc
   ret
 
-; Kies een lege 2x2-pixelpositie binnen het kader met een kleine 16-bits LFSR.
+; Kies een lege byte-uitgelijnde 8x4-positie binnen het kader met een LFSR.
 place_food:
 .try_again:
   mov ax,[random_seed]
@@ -270,36 +311,50 @@ place_food:
 .no_tap:
   mov [random_seed],ax
 
-  ; x/2 = 1..318, uit de lage negen bits.
+  ; Kolom 1..78 (x=8..624), uit de lage zeven bits.
   mov bx,ax
-  and bx,01ffh
-  cmp bx,318
+  and bx,007fh
+  cmp bx,78
   jb .column_ok
-  sub bx,318
+  sub bx,78
 .column_ok:
   inc bx
+  shl bx,1
+  shl bx,1
+  mov di,bx
 
-  ; y/2 = 5..98, uit de hoge zeven bits.
+  ; Rij 3..48 (y=12..192), uit de hoge zes bits.
   mov cl,8
   shr ax,cl
-  and ax,007fh
-  cmp ax,94
+  and ax,003fh
+  cmp ax,46
   jb .row_ok
-  sub ax,94
+  sub ax,46
 .row_ok:
-  add ax,5
-  mov cl,9
-  shl ax,cl
-  add ax,bx
+  add ax,3
+  mov bx,ax
+  shl ax,1
+  shl ax,1
+  shl ax,1
+  shl ax,1
+  shl ax,1
+  shl ax,1
+  shl ax,1
+  shl ax,1
+  shl bx,1
+  shl bx,1
+  shl bx,1
+  shl bx,1
+  shl bx,1
+  shl bx,1
+  add di,ax
+  add di,bx
 
-  push ax
-  call position_to_vram
   mov bx,RED
   mov es,bx
-  test byte [es:di],al
-  pop ax
+  cmp byte [es:di],0
   jne .try_again
-  mov [food_position],ax
+  mov [food_offset],di
   call draw_food
   ret
 
@@ -422,48 +477,90 @@ draw_vline_in_plane:
   pop bx
   ret
 
-; AX is een gepakte positie: x/2 in bits 0..8, y/2 in bits 9..15.
-; Retourneert DI als VRAM-offset en AL als mask voor twee horizontale pixels.
-position_to_vram:
+; Posities bevatten de Sanyo-VRAM-offset in bits 2..15 en de 2-pixel-maskindex
+; in bits 0..1. Dit ondersteunt verticale beweging per enkele scanline.
+packed_to_vram:
   mov dx,ax
-  mov bp,dx
-  and bp,3
   mov bx,dx
-  and bx,01ffh
-  shr bx,1
-  shr bx,1
-  shl bx,1
-  shl bx,1                    ; (x/2)/4 * 4
-  mov di,bx
-  mov dx,ax
-  mov cl,9
-  shr dx,cl                    ; y/2
-  mov cx,dx
-  and dx,1
-  shl dx,1                     ; scanline 0 of 2 binnen het blok
-  shr cx,1                     ; vier-scanlineblok
-  mov si,cx
-  shl cx,1
-  shl cx,1
-  shl cx,1
-  shl cx,1
-  shl cx,1
-  shl cx,1
-  shl cx,1
-  shl cx,1                     ; blok * 256
-  shl si,1
-  shl si,1
-  shl si,1
-  shl si,1
-  shl si,1
-  shl si,1                     ; blok * 64
-  add di,cx
-  add di,si
-  add di,dx
-  mov al,[cs:dot_masks + bp]
+  and bx,3
+  shr dx,1
+  shr dx,1
+  mov di,dx
+  mov al,[cs:dot_masks + bx]
   ret
 
-; AX is een slangpositie. De witte 2x2-pixelstip overschrijft alleen haar bits.
+step_right:
+  mov bx,ax
+  and bx,3
+  cmp bx,3
+  jne .same_byte
+  and ax,0fffch
+  add ax,16                    ; volgende videobytekolom
+  ret
+.same_byte:
+  inc ax
+  ret
+
+step_left:
+  mov bx,ax
+  and bx,3
+  or bx,bx
+  jnz .same_byte
+  and ax,0fffch
+  sub ax,16                    ; vorige videobytekolom
+  add ax,3
+  ret
+.same_byte:
+  dec ax
+  ret
+
+step_up:
+  mov bx,ax
+  shr bx,1
+  shr bx,1
+  and bx,3
+  or bx,bx
+  jnz .same_block
+  sub ax,1268                  ; offset -317 over de blokgrens
+  ret
+.same_block:
+  sub ax,4                     ; offset -1
+  ret
+
+step_down:
+  mov bx,ax
+  shr bx,1
+  shr bx,1
+  and bx,3
+  cmp bx,3
+  jne .same_block
+  add ax,1268                  ; offset +317 over de blokgrens
+  ret
+.same_block:
+  add ax,4                     ; offset +1
+  ret
+
+; CF=1 als de 2x1-kop een gele pixel van het 8x4-balletje raakt.
+is_food_at_position:
+  push ax
+  call packed_to_vram
+  mov bx,di
+  sub bx,[food_offset]
+  jb .not_food
+  cmp bx,3
+  ja .not_food
+  mov ah,[food_masks + bx]
+  test al,ah
+  jz .not_food
+  pop ax
+  stc
+  ret
+.not_food:
+  pop ax
+  clc
+  ret
+
+; AX is een slangpositie. De witte 2x1-pixelstip overschrijft alleen haar bits.
 draw_white_dot:
   push ax
   push bx
@@ -472,20 +569,16 @@ draw_white_dot:
   push si
   push di
   push es
-  call position_to_vram
-  mov ah,al
+  call packed_to_vram
   mov bx,RED
   mov es,bx
   or es:[di],al
-  or es:[di + 1],al
   mov bx,GREEN
   mov es,bx
   or es:[di],al
-  or es:[di + 1],al
   mov bx,BLUE
   mov es,bx
   or es:[di],al
-  or es:[di + 1],al
   pop es
   pop di
   pop si
@@ -504,21 +597,18 @@ clear_dot:
   push si
   push di
   push es
-  call position_to_vram
+  call packed_to_vram
   mov ah,al
   not ah
   mov bx,RED
   mov es,bx
   and es:[di],ah
-  and es:[di + 1],ah
   mov bx,GREEN
   mov es,bx
   and es:[di],ah
-  and es:[di + 1],ah
   mov bx,BLUE
   mov es,bx
   or es:[di],al
-  or es:[di + 1],al
   pop es
   pop di
   pop si
@@ -528,25 +618,29 @@ clear_dot:
   pop ax
   ret
 
-; Geel = rood + groen zonder blauw, maar alleen binnen het stipmasker.
-; Daardoor blijft de blauwe achtergrond rondom de stip transparant zichtbaar.
+; Geel = rood + groen zonder blauw. Alleen de gele bits worden aangeraakt,
+; zodat de vier hoekpixels van het 8x4-balletje blauw blijven.
 draw_food:
-  mov ax,[food_position]
-  call position_to_vram
-  mov ah,al
+  mov di,[food_offset]
   mov bx,RED
   mov es,bx
-  or es:[di],al
-  or es:[di + 1],al
+  call draw_food_in_red_or_green
   mov bx,GREEN
   mov es,bx
-  or es:[di],al
-  or es:[di + 1],al
-  not ah
+  call draw_food_in_red_or_green
   mov bx,BLUE
   mov es,bx
-  and es:[di],ah
-  and es:[di + 1],ah
+  and byte es:[di],0c3h
+  and byte es:[di + 1],00h
+  and byte es:[di + 2],00h
+  and byte es:[di + 3],0c3h
+  ret
+
+draw_food_in_red_or_green:
+  or byte es:[di],3ch
+  or byte es:[di + 1],0ffh
+  or byte es:[di + 2],0ffh
+  or byte es:[di + 3],3ch
   ret
 
 clear_plane:
@@ -557,13 +651,18 @@ clear_plane:
   ret
 
 snake_direction:  db DIR_RIGHT
+ate_food:         db 0
 snake_head_index: dw 0
 snake_length:     dw SNAKE_INITIAL_LEN
 growth_remaining: dw 0
-food_position:    dw FOOD_INITIAL
+food_offset:      dw FOOD_INITIAL
 random_seed:      dw 0ace1h
 snake_positions:  times SNAKE_CELLS dw 0
 dot_masks:        db 0c0h,30h,0ch,03h
+food_masks:       db 3ch,0ffh,0ffh,3ch
+key:
+  .code db 0
+  .ctrl db 0
 
 ; Drie conventionele scanline-planes in B, G, R-volgorde.
 menu_pic:
