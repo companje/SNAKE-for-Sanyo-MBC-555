@@ -21,8 +21,12 @@ SNAKE_START       equ ((100 / 4) * ROW_BYTES + (200 / 8) * 4) << 2
 FOOD_INITIAL      equ (100 / 4) * ROW_BYTES + (304 / 8) * 4
 GROWTH_PER_FOOD   equ 20
 MOVE_DELAY        equ 4000
-F4                equ 08eh           ; 349 Hz op de Sanyo-seriële speaker
-FOOD_SOUND_DURATION equ 1000
+FOOD_SOUND_TONE equ 03eh
+FOOD_SOUND_DURATION equ 10
+CRASH_TONE_START equ 20h
+CRASH_TONE_STEP  equ 04h
+CRASH_TONE_STEPS equ 24
+CRASH_TONE_DURATION equ 2
 
 DIR_RIGHT equ 0
 DIR_LEFT  equ 1
@@ -63,6 +67,7 @@ game_loop:
   call read_keyboard
   call move_snake
   jnc .keep_playing
+  call play_crash_sound
   jmp menu_screen
 .keep_playing:
   mov cx,MOVE_DELAY
@@ -775,9 +780,31 @@ play_food_sound:
   push bx
   push cx
   push dx
-  mov bx,F4
+  mov bx,FOOD_SOUND_TONE
   mov dx,FOOD_SOUND_DURATION
   call play
+  pop dx
+  pop cx
+  pop bx
+  pop ax
+  ret
+
+; Een oplopende periode betekent een dalende toon: hoog naar laag.
+play_crash_sound:
+  push ax
+  push bx
+  push cx
+  push dx
+  push si
+  mov bx,CRASH_TONE_START
+  mov si,CRASH_TONE_STEPS
+.next_note:
+  mov dx,CRASH_TONE_DURATION
+  call play
+  add bx,CRASH_TONE_STEP
+  dec si
+  jnz .next_note
+  pop si
   pop dx
   pop cx
   pop bx
