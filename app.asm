@@ -518,7 +518,7 @@ draw_dotted_vlines:
 draw_dotted_vline:
   push bx
   push cx
-  mov bl,10 & 3
+  mov bl,(FIELD_TOP + 1) & 3
   mov cx,FIELD_BOTTOM - FIELD_TOP - 1
 .next_pixel:
   or es:[di],al
