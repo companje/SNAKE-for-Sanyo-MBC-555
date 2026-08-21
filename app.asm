@@ -2,7 +2,7 @@
 
 %include "header.asm"
 
-FIELD_TOP    equ 9
+FIELD_TOP    equ 8
 FIELD_BOTTOM equ 199
 FIELD_LEFT   equ 0
 FIELD_RIGHT  equ 639
@@ -504,11 +504,11 @@ draw_dotted_hline:
 
 ; Verticale rand: twee pixels. Per scanline wisselt blauw/cyaan om.
 draw_dotted_vlines:
-  mov di,(10 / 4) * ROW_BYTES + (FIELD_LEFT / 8) * 4 + (10 & 3)
+  mov di,((FIELD_TOP + 1) / 4) * ROW_BYTES + (FIELD_LEFT / 8) * 4 + ((FIELD_TOP + 1) & 3)
   mov al,40h                 ; links: blauw, cyaan
   mov ah,80h                 ; daaronder: cyaan, blauw
   call draw_dotted_vline
-  mov di,(10 / 4) * ROW_BYTES + (638 / 8) * 4 + (10 & 3)
+  mov di,((FIELD_TOP + 1) / 4) * ROW_BYTES + (638 / 8) * 4 + ((FIELD_TOP + 1) & 3)
   mov al,01h                 ; rechts: blauw, cyaan
   mov ah,02h                 ; daaronder: cyaan, blauw
   call draw_dotted_vline
