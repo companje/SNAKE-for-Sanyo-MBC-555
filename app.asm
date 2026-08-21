@@ -624,6 +624,7 @@ is_outside_playfield:
   push bx
   push cx
   push dx
+  push si
   mov cx,ax
   and cx,3                    ; horizontale 2-pixelmaskindex
   call packed_to_vram
@@ -631,6 +632,8 @@ is_outside_playfield:
   xor dx,dx
   mov bx,ROW_BYTES
   div bx                       ; AX=vier-scanlineblok, DX=blokrest
+  mov si,dx
+  and si,3                     ; alleen scanline 0..3, niet de x-positie
 
   cmp ax,2                    ; y=0..7 is de zwarte bovenmarge
   jb .outside
@@ -638,12 +641,12 @@ is_outside_playfield:
   ja .outside
   cmp ax,2
   jne .not_top_block
-  cmp dl,2                    ; y=8/9 valt op of boven de bovenrand
+  cmp si,2                    ; y=8/9 valt op of boven de bovenrand
   jb .outside
 .not_top_block:
   cmp ax,49
   jne .check_x
-  cmp dl,3                    ; y=199 is de onderrand
+  cmp si,3                    ; y=199 is de onderrand
   jae .outside
 .check_x:
   shr dx,1
@@ -658,6 +661,7 @@ is_outside_playfield:
   cmp cx,3                    ; x=638/639 is de rechter rand
   je .outside
 .inside:
+  pop si
   pop dx
   pop cx
   pop bx
@@ -665,6 +669,7 @@ is_outside_playfield:
   clc
   ret
 .outside:
+  pop si
   pop dx
   pop cx
   pop bx
