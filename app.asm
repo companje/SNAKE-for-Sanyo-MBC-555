@@ -23,10 +23,10 @@ GROWTH_PER_FOOD   equ 20
 MOVE_DELAY        equ 4000
 FOOD_SOUND_TONE equ 03eh
 FOOD_SOUND_DURATION equ 10
-CRASH_TONE_START equ 20h
-CRASH_TONE_STEP  equ 04h
-CRASH_TONE_STEPS equ 24
-CRASH_TONE_DURATION equ 5
+CRASH_TONE_START equ 60h
+CRASH_TONE_STEP  equ 07h
+CRASH_TONE_STEPS equ 40
+CRASH_TONE_DURATION equ 15
 
 DIR_RIGHT equ 0
 DIR_LEFT  equ 1
@@ -66,7 +66,13 @@ start_game:
 game_loop:
   call read_keyboard
   call move_snake
+  jc .crashed
+  cmp byte [boost_move],0
+  je .keep_playing
+  mov byte [boost_move],0
+  call move_snake
   jnc .keep_playing
+.crashed:
   call play_crash_sound
   jmp menu_screen
 .keep_playing:
@@ -172,22 +178,32 @@ read_keyboard:
 .right:
   cmp byte [snake_direction],DIR_LEFT
   je .done
+  cmp byte [snake_direction],DIR_RIGHT
+  je .boost
   mov byte [snake_direction],DIR_RIGHT
   ret
 .left:
   cmp byte [snake_direction],DIR_RIGHT
   je .done
+  cmp byte [snake_direction],DIR_LEFT
+  je .boost
   mov byte [snake_direction],DIR_LEFT
   ret
 .up:
   cmp byte [snake_direction],DIR_DOWN
   je .done
+  cmp byte [snake_direction],DIR_UP
+  je .boost
   mov byte [snake_direction],DIR_UP
   ret
 .down:
   cmp byte [snake_direction],DIR_UP
   je .done
+  cmp byte [snake_direction],DIR_DOWN
+  je .boost
   mov byte [snake_direction],DIR_DOWN
+.boost:
+  mov byte [boost_move],1
 .done:
   ret
 
@@ -216,6 +232,7 @@ reset_game:
   mov word [snake_length],SNAKE_INITIAL_LEN
   mov word [growth_remaining],0
   mov byte [snake_direction],DIR_RIGHT
+  mov byte [boost_move],0
 
   mov di,snake_positions
   mov ax,SNAKE_START
@@ -896,6 +913,7 @@ clear_plane:
   ret
 
 snake_direction:  db DIR_RIGHT
+boost_move:       db 0
 ate_food:         db 0
 snake_head_index: dw 0
 snake_length:     dw SNAKE_INITIAL_LEN
