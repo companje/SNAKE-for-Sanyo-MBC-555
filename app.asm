@@ -161,6 +161,14 @@ copy_menu_plane:
 
 ; Teken de 40x8-sprite gecentreerd in de zwarte marge boven het speelveld.
 draw_top_sprite:
+  push ax
+  push bx
+  push cx
+  push dx
+  push si
+  push di
+  push bp
+  push es
   mov si,sprite_pic
   mov ax,BLUE
   mov es,ax
@@ -171,6 +179,14 @@ draw_top_sprite:
   mov ax,RED
   mov es,ax
   call copy_sprite_plane
+  pop es
+  pop bp
+  pop di
+  pop si
+  pop dx
+  pop cx
+  pop bx
+  pop ax
   ret
 
 ; Zet een lineaire SPRITE_WIDTHxSPRITE_HEIGHT-plane om naar Sanyo-VRAM.
@@ -283,7 +299,6 @@ reset_game:
   call clear_screen
   call clear_top_margin
   call draw_playfield
-  call draw_top_sprite
   mov word [snake_head_index],0
   mov word [snake_length],SNAKE_INITIAL_LEN
   mov word [growth_remaining],0
@@ -1013,6 +1028,7 @@ draw_score:
   mov al,dl
   add di,8                    ; volgend dubbelbreed teken
   call draw_double_char
+  call draw_top_sprite
   pop di
   pop dx
   pop bx
