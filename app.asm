@@ -21,6 +21,8 @@ SNAKE_START       equ ((100 / 4) * ROW_BYTES + (200 / 8) * 4) << 2
 FOOD_INITIAL      equ (100 / 4) * ROW_BYTES + (304 / 8) * 4
 GROWTH_PER_FOOD   equ 20
 MOVE_DELAY        equ 4000
+F4                equ 08eh           ; 349 Hz op de Sanyo-seriële speaker
+FOOD_SOUND_DURATION equ 1000
 
 DIR_RIGHT equ 0
 DIR_LEFT  equ 1
@@ -263,6 +265,7 @@ move_snake:
   jmp short .insert_head
 .eat_food:
   call clear_food
+  call play_food_sound
   add word [growth_remaining],GROWTH_PER_FOOD
   mov byte [ate_food],1
 .insert_head:
@@ -762,6 +765,42 @@ clear_food:
   or byte es:[di + 1],0ffh
   or byte es:[di + 2],0ffh
   or byte es:[di + 3],3ch
+  ret
+
+; De MBC-55x leidt de USART-break-bit naar de speaker. Behoud alle
+; spelregisters, want deze routine draait precies tussen kopberekening en
+; het invoegen van de nieuwe kop in de slang.
+play_food_sound:
+  push ax
+  push bx
+  push cx
+  push dx
+  mov bx,F4
+  mov dx,FOOD_SOUND_DURATION
+  call play
+  pop dx
+  pop cx
+  pop bx
+  pop ax
+  ret
+
+; BX=toonfrequentie, DX=duur.
+play:
+  mov cx,bx
+  mov ax,35h
+.toggle_break:
+  xor al,8
+  out KBD_CONTROL,al
+.delay:
+  dec ah
+  jnz .continue
+  dec dx
+  jz .done
+.continue:
+  loop .delay
+  mov cx,bx
+  jmp .toggle_break
+.done:
   ret
 
 clear_plane:
