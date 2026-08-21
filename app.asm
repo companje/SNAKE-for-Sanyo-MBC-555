@@ -11,6 +11,8 @@ MENU_BYTES  equ 336 / 8
 MENU_ROWS   equ 116 / 4
 MENU_PLANE  equ MENU_BYTES * 116
 MENU_OFFSET equ (40 / 4) * ROW_BYTES + ((640 - 336) / 16) * 4
+SCORE_X     equ WIDTH - 8 - (3 * 16)
+SCORE_OFFSET equ (SCORE_X / 8) * 4
 
 ; Eén slangsegment is 2x1 schermpixels: horizontaal verdubbeld, maar één
 ; scanline hoog zoals het oorspronkelijke spel.
@@ -233,8 +235,10 @@ reset_game:
   mov word [snake_head_index],0
   mov word [snake_length],SNAKE_INITIAL_LEN
   mov word [growth_remaining],0
+  mov word [score],0
   mov byte [snake_direction],DIR_RIGHT
   mov byte [boost_moves],0
+  call draw_score
 
   mov di,snake_positions
   mov ax,SNAKE_START
@@ -292,6 +296,12 @@ move_snake:
 .eat_food:
   call clear_food
   call play_food_sound
+  inc word [score]
+  cmp word [score],1000
+  jb .score_in_range
+  mov word [score],0
+.score_in_range:
+  call draw_score
   add word [growth_remaining],GROWTH_PER_FOOD
   mov byte [ate_food],1
 .insert_head:
@@ -415,8 +425,18 @@ clear_screen:
 
 ; Maak de bovenste acht scanlines zwart; deze horen niet bij het speelveld.
 clear_top_margin:
+  mov ax,RED
+  mov es,ax
+  call clear_top_margin_plane
+  mov ax,GREEN
+  mov es,ax
+  call clear_top_margin_plane
   mov ax,BLUE
   mov es,ax
+  call clear_top_margin_plane
+  ret
+
+clear_top_margin_plane:
   xor ax,ax
   xor di,di
   mov cx,ROW_BYTES
@@ -912,6 +932,115 @@ play:
 .done:
   ret
 
+; Teken de score als drie witte ROM-glyphs in de zwarte bovenmarge. Elke
+; bronpixel wordt met stretch_bits horizontaal verdubbeld, dus 8x8 wordt 16x8.
+draw_score:
+  push ax
+  push bx
+  push dx
+  push di
+  call clear_top_margin
+  mov ax,[score]
+  xor dx,dx
+  mov bx,100
+  div bx
+  push dx
+  add al,'0'
+  mov di,SCORE_OFFSET          ; rechts uitgelijnd, met 8 pixels marge
+  call draw_double_char
+  pop ax
+  xor dx,dx
+  mov bx,10
+  div bx
+  push dx
+  add al,'0'
+  add di,8                    ; volgend dubbelbreed teken
+  call draw_double_char
+  pop dx
+  add dl,'0'
+  mov al,dl
+  add di,8                    ; volgend dubbelbreed teken
+  call draw_double_char
+  pop di
+  pop dx
+  pop bx
+  pop ax
+  ret
+
+; AL=ASCII-teken, DI=Sanyo-VRAM-offset van de eerste glyph-byte op y=0.
+draw_double_char:
+  push ax
+  push bx
+  push cx
+  push dx
+  push si
+  push bp
+  push es
+  push ds
+  xor ah,ah
+  mov si,ax
+  shl si,1
+  shl si,1
+  shl si,1                    ; acht bytes per 8x8-glyph
+  add si,1000h                ; font op FE00:1000
+  mov ax,ROM_SEG
+  mov ds,ax
+  mov bp,8
+  xor dh,dh
+.scanline:
+  mov al,[si]
+  call stretch_bits
+  mov bx,RED
+  mov es,bx
+  mov es:[di],ah
+  mov es:[di + 4],al
+  mov bx,GREEN
+  mov es,bx
+  mov es:[di],ah
+  mov es:[di + 4],al
+  mov bx,BLUE
+  mov es,bx
+  mov es:[di],ah
+  mov es:[di + 4],al
+  inc si
+  inc di
+  inc dh
+  cmp dh,4
+  jb .next_scanline
+  xor dh,dh
+  add di,ROW_BYTES - 4
+.next_scanline:
+  dec bp
+  jnz .scanline
+  pop ds
+  pop es
+  pop bp
+  pop si
+  pop dx
+  pop cx
+  pop bx
+  pop ax
+  ret
+
+; AL=abcdefgh wordt AX=aabbccddeeffgghh.
+stretch_bits:
+  push cx
+  push bx
+  mov bl,al
+  xor ax,ax
+  mov cx,8
+.bit:
+  shl ax,1
+  shl ax,1
+  shl bl,1
+  jnc .zero
+  or ax,3
+.zero:
+  loop .bit
+  pop bx
+  pop cx
+  ret
+
 clear_plane:
   xor ax,ax
   xor di,di
@@ -925,6 +1054,7 @@ ate_food:         db 0
 snake_head_index: dw 0
 snake_length:     dw SNAKE_INITIAL_LEN
 growth_remaining: dw 0
+score:            dw 0
 food_offset:      dw FOOD_INITIAL
 random_seed:      dw 0ace1h
 snake_positions:  times SNAKE_CELLS dw 0

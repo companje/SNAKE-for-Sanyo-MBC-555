@@ -43,7 +43,7 @@ De huidige `app.asm` doet het volgende:
 3. toont bij het starten `assets/sanyo/menu-ok-336x116.pic`, gecentreerd op x=152, y=40;
 4. start het spel met `P` of spatie en keert bij een botsing terug naar het menu;
 5. leest WASD en de vier cursorpijlen op het Sanyo-cijferblok (8/4/5/6);
-6. tekent een bewegende, groeiende witte slang en een transparante gele voedselstip.
+6. tekent een bewegende, groeiende witte slang, een transparante gele voedselstip en een dubbelbrede ROM-score.
 
 `menu-ok-336x116.pic` heeft geen header en bestaat uit drie lineaire planes in
 blauw–groen–rood-volgorde. Elke plane bevat `336 / 8 × 116 = 4.872` bytes.
@@ -152,10 +152,9 @@ past op een enkelzijdige 180 KiB-floppy.
 
 Logische vervolgstappen zijn:
 
-1. de score en het lettertype uit de ROM overzetten;
-2. pauzestand, sprites en geluid porten;
-3. timing en moeilijkheidsgraad verfijnen;
-4. elke grafische stap controleren met `./capture.sh`.
+1. pauzestand en sprites porten;
+2. timing en moeilijkheidsgraad verfijnen;
+3. elke grafische stap controleren met `./capture.sh`.
 
 Gegenereerde `*.img`, `*.lst` en `captures/`-bestanden horen normaal niet in
 een commit.
