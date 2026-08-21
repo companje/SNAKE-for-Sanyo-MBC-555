@@ -64,6 +64,11 @@ KEY_LEFT    equ 1ch
 KEY_RIGHT   equ 1dh
 KEY_UP      equ 1eh
 KEY_DOWN    equ 1fh
+KEY_ESCAPE  equ 1bh
+
+CREDITS_LINE1_OFFSET equ (16 / 4) * ROW_BYTES
+CREDITS_LINE2_OFFSET equ (32 / 4) * ROW_BYTES
+CREDITS_LINE3_OFFSET equ (56 / 4) * ROW_BYTES
 
 setup:
   push cs
@@ -107,6 +112,23 @@ game_loop:
 .delay:
   loop .delay
   jmp game_loop
+
+; Toon de aftiteling met het gewone 8x8-ROM-font en wacht op één toets.
+credits_screen:
+  call clear_screen_black
+  mov si,credits_line1
+  mov di,CREDITS_LINE1_OFFSET
+  call draw_normal_text
+  mov si,credits_line2
+  mov di,CREDITS_LINE2_OFFSET
+  call draw_normal_text
+  mov si,credits_line3
+  mov di,CREDITS_LINE3_OFFSET
+  call draw_normal_text
+.wait_key:
+  call check_keys
+  jz .wait_key
+  jmp menu_screen
 
 ; De menu-UART levert ASCII voor P en spatie.
 init_menu_keyboard:
@@ -254,6 +276,8 @@ update_top_sprite:
 read_keyboard:
   call check_keys
   jz .done
+  cmp al,KEY_ESCAPE
+  je credits_screen
   cmp al,KEY_UP
   je .up
   cmp al,KEY_DOWN
@@ -263,6 +287,8 @@ read_keyboard:
   cmp al,KEY_RIGHT
   je .right
   and al,5fh                 ; ASCII naar hoofdletter
+  cmp al,'Q'
+  je credits_screen
   cmp al,'W'
   je .up
   cmp al,'8'
@@ -521,6 +547,19 @@ clear_screen:
   mov ax,-1
   xor di,di
   rep stosw
+  ret
+
+; Wis alle drie RGB-planes voor een volledig zwart scherm.
+clear_screen_black:
+  mov ax,RED
+  mov es,ax
+  call clear_plane
+  mov ax,GREEN
+  mov es,ax
+  call clear_plane
+  mov ax,BLUE
+  mov es,ax
+  call clear_plane
   ret
 
 ; Maak de bovenste acht scanlines zwart; deze horen niet bij het speelveld.
@@ -1110,6 +1149,76 @@ draw_score:
   pop ax
   ret
 
+; DS:SI wijst naar een nul-terminated ASCII-tekst; DI is de startpositie in
+; Sanyo-VRAM. Tekens gebruiken het ongerekte 8x8-ROM-font.
+draw_normal_text:
+  push ax
+  push si
+  push di
+.next_char:
+  lodsb
+  or al,al
+  jz .done
+  call draw_normal_char
+  add di,4                    ; volgend 8-pixelteken
+  jmp short .next_char
+.done:
+  pop di
+  pop si
+  pop ax
+  ret
+
+; AL=ASCII-teken, DI=Sanyo-VRAM-offset van het teken op een 4-line grens.
+draw_normal_char:
+  push ax
+  push bx
+  push cx
+  push dx
+  push si
+  push bp
+  push es
+  push ds
+  xor ah,ah
+  mov si,ax
+  shl si,1
+  shl si,1
+  shl si,1                    ; acht bytes per 8x8-glyph
+  add si,1000h                ; font op FE00:1000
+  mov ax,ROM_SEG
+  mov ds,ax
+  mov bp,8
+  xor dh,dh
+.scanline:
+  mov al,[si]
+  mov bx,RED
+  mov es,bx
+  mov es:[di],al
+  mov bx,GREEN
+  mov es,bx
+  mov es:[di],al
+  mov bx,BLUE
+  mov es,bx
+  mov es:[di],al
+  inc si
+  inc di
+  inc dh
+  cmp dh,4
+  jb .next_scanline
+  xor dh,dh
+  add di,ROW_BYTES - 4
+.next_scanline:
+  dec bp
+  jnz .scanline
+  pop ds
+  pop es
+  pop bp
+  pop si
+  pop dx
+  pop cx
+  pop bx
+  pop ax
+  ret
+
 ; AL=ASCII-teken, DI=Sanyo-VRAM-offset van de eerste glyph-byte op y=0.
 draw_double_char:
   push ax
@@ -1209,6 +1318,10 @@ food_masks:       db 3ch,0ffh,0ffh,3ch
 key:
   .code db 0
   .ctrl db 0
+
+credits_line1 db 'SNAKE.COM v1.00  by Rick Companje 17/12/1996',0
+credits_line2 db 'Copyright (C) 1996  TMR Software Productions',0
+credits_line3 db 'Rewritten with love in 2026 for the Sanyo MBC-550/555. Sanyo 4-ever!',0
 
 ; Drie conventionele scanline-planes in B, G, R-volgorde.
 menu_pic:
