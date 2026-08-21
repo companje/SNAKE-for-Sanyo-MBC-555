@@ -30,8 +30,14 @@ SPRITE_OFFSET equ ((WIDTH - SPRITE_WIDTH + 8) / 16) * 4
 
 ; Eén slangsegment is 2x1 schermpixels: horizontaal verdubbeld, maar één
 ; scanline hoog zoals het oorspronkelijke spel.
-SNAKE_CELLS       equ 128
+; Het speelveld heeft 318 horizontale 2x1-cellen en 190 bruikbare scanlines.
+; De ringbuffer staat buiten de geladen code op 2000:0000 en loopt via 3000h
+; door. Eén vrije cel voorkomt dat kop en staart in de ring samenvallen.
+SNAKE_CELLS       equ 318 * 190
 SNAKE_MAX_LEN     equ SNAKE_CELLS - 1
+SNAKE_POS_LOW_SEG equ 2000h
+SNAKE_POS_HIGH_SEG equ 3000h
+SNAKE_SEGMENT_CELLS equ 32768
 SNAKE_INITIAL_LEN equ 14
 SNAKE_START       equ ((100 / 4) * ROW_BYTES + (200 / 8) * 4) << 2
 FOOD_INITIAL      equ (100 / 4) * ROW_BYTES + (304 / 8) * 4
@@ -336,16 +342,17 @@ reset_game:
   mov byte [boost_moves],0
   call draw_score
 
-  mov di,snake_positions
+  xor di,di
   mov ax,SNAKE_START
   mov cx,SNAKE_INITIAL_LEN
 .initial_cell:
-  mov [di],ax
+  mov bx,di
+  call write_snake_position
   push ax
   call draw_white_dot
   pop ax
   call step_left
-  add di,2
+  inc di
   loop .initial_cell
   mov word [food_offset],FOOD_INITIAL
   call draw_food
@@ -354,8 +361,7 @@ reset_game:
 ; CF=1 wanneer de slang de rand of haar lichaam raakt.
 move_snake:
   mov bx,[snake_head_index]
-  shl bx,1
-  mov ax,[snake_positions + bx]
+  call read_snake_position
   cmp byte [snake_direction],DIR_RIGHT
   jne .not_right
   call step_right
@@ -410,8 +416,7 @@ move_snake:
 .decrement_head:
   dec bx
   mov [snake_head_index],bx
-  shl bx,1
-  mov [snake_positions + bx],ax
+  call write_snake_position
   call draw_white_dot
 
   cmp word [growth_remaining],0
@@ -435,8 +440,7 @@ move_snake:
   jb .tail_index_ok
   sub bx,SNAKE_CELLS
 .tail_index_ok:
-  shl bx,1
-  mov ax,[snake_positions + bx]
+  call read_snake_position
   call clear_dot
 .after_tail:
   cmp byte [ate_food],0
@@ -722,6 +726,48 @@ draw_vline_in_plane:
 
 ; Posities bevatten de Sanyo-VRAM-offset in bits 2..15 en de 2-pixel-maskindex
 ; in bits 0..1. Dit ondersteunt verticale beweging per enkele scanline.
+; BX is de ringbufferindex. De buffer zelf staat buiten code en stack in het
+; vrije RAM vanaf 2000:0000; AX bevat of ontvangt de ingepakte positie.
+read_snake_position:
+  push bx
+  push dx
+  push es
+  cmp bx,SNAKE_SEGMENT_CELLS
+  jb .low_segment
+  sub bx,SNAKE_SEGMENT_CELLS
+  mov dx,SNAKE_POS_HIGH_SEG
+  jmp short .read
+.low_segment:
+  mov dx,SNAKE_POS_LOW_SEG
+.read:
+  mov es,dx
+  shl bx,1
+  mov ax,es:[bx]
+  pop es
+  pop dx
+  pop bx
+  ret
+
+write_snake_position:
+  push bx
+  push dx
+  push es
+  cmp bx,SNAKE_SEGMENT_CELLS
+  jb .low_segment
+  sub bx,SNAKE_SEGMENT_CELLS
+  mov dx,SNAKE_POS_HIGH_SEG
+  jmp short .write
+.low_segment:
+  mov dx,SNAKE_POS_LOW_SEG
+.write:
+  mov es,dx
+  shl bx,1
+  mov es:[bx],ax
+  pop es
+  pop dx
+  pop bx
+  ret
+
 packed_to_vram:
   mov dx,ax
   mov bx,dx
@@ -1158,7 +1204,6 @@ food_sprite_ticks: dw 0
 top_sprite_state: db SPRITE_NORMAL
 food_offset:      dw FOOD_INITIAL
 random_seed:      dw 0ace1h
-snake_positions:  times SNAKE_CELLS dw 0
 dot_masks:        db 0c0h,30h,0ch,03h
 food_masks:       db 3ch,0ffh,0ffh,3ch
 key:
