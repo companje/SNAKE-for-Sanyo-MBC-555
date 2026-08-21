@@ -15,11 +15,11 @@ MENU_OFFSET equ (40 / 4) * ROW_BYTES + ((640 - 336) / 16) * 4
 ; Eén slangsegment is 2x1 schermpixels: horizontaal verdubbeld, maar één
 ; scanline hoog zoals het oorspronkelijke spel.
 SNAKE_CELLS       equ 128
-SNAKE_INITIAL_LEN equ 8
+SNAKE_INITIAL_LEN equ 14
 SNAKE_START       equ ((100 / 4) * ROW_BYTES + (200 / 8) * 4) << 2
 FOOD_INITIAL      equ (100 / 4) * ROW_BYTES + (304 / 8) * 4
-GROWTH_PER_FOOD   equ 4
-MOVE_DELAY        equ 8000
+GROWTH_PER_FOOD   equ 20
+MOVE_DELAY        equ 4000
 
 DIR_RIGHT equ 0
 DIR_LEFT  equ 1
@@ -202,6 +202,7 @@ check_keys:
 
 reset_game:
   call clear_screen
+  call clear_top_margin
   call draw_playfield
   mov word [snake_head_index],0
   mov word [snake_length],SNAKE_INITIAL_LEN
@@ -374,19 +375,106 @@ clear_screen:
   rep stosw
   ret
 
-; Teken het witte kader. Horizontale lijnen worden per videobyte getekend;
-; de twee verticale lijnen volgen de vier-scanline-indeling van de VRAM.
+; Maak de bovenste acht scanlines zwart; deze horen niet bij het speelveld.
+clear_top_margin:
+  mov ax,BLUE
+  mov es,ax
+  xor ax,ax
+  xor di,di
+  mov cx,ROW_BYTES
+  rep stosw
+  ret
+
+; Teken een blauw-cyaan schaakpatroon. De blauwe pixels zijn de bestaande
+; achtergrond; alleen de groene plane hoeft voor de cyaan pixels gezet te zijn.
 draw_playfield:
   mov al,FIELD_TOP
-  call draw_white_hline
+  call draw_dotted_hline
   mov al,FIELD_BOTTOM
-  call draw_white_hline
-  mov ax,RED
-  mov es,ax
-  call draw_white_vlines
+  call draw_dotted_hline
   mov ax,GREEN
   mov es,ax
-  call draw_white_vlines
+  call draw_dotted_vlines
+  ret
+
+; AL is een y-coordinaat. Blauw, cyaan, blauw, cyaan over een hele scanline.
+draw_dotted_hline:
+  push ax
+  push bx
+  push cx
+  push di
+  push es
+  xor ah,ah
+  mov bx,ax
+  and bx,3
+  shr ax,1
+  shr ax,1
+  mov di,ax
+  shl ax,1
+  shl ax,1
+  shl ax,1
+  shl ax,1
+  shl ax,1
+  shl ax,1
+  shl ax,1
+  shl ax,1
+  shl di,1
+  shl di,1
+  shl di,1
+  shl di,1
+  shl di,1
+  shl di,1
+  add di,ax
+  add di,bx
+  mov ax,GREEN
+  mov es,ax
+  mov cx,COLS
+  mov al,55h                 ; x=0 blauw, x=1 cyaan
+.next_byte:
+  mov es:[di],al
+  add di,4
+  loop .next_byte
+  pop es
+  pop di
+  pop cx
+  pop bx
+  pop ax
+  ret
+
+; Verticale rand: twee pixels. Per scanline wisselt blauw/cyaan om.
+draw_dotted_vlines:
+  mov di,(10 / 4) * ROW_BYTES + (FIELD_LEFT / 8) * 4 + (10 & 3)
+  mov al,40h                 ; links: blauw, cyaan
+  mov ah,80h                 ; daaronder: cyaan, blauw
+  call draw_dotted_vline
+  mov di,(10 / 4) * ROW_BYTES + (638 / 8) * 4 + (10 & 3)
+  mov al,01h                 ; rechts: blauw, cyaan
+  mov ah,02h                 ; daaronder: cyaan, blauw
+  call draw_dotted_vline
+  ret
+
+; ES is de groene plane, DI de eerste scanline, AL/AH de alternerende maskers.
+draw_dotted_vline:
+  push bx
+  push cx
+  mov bl,10 & 3
+  mov cx,FIELD_BOTTOM - FIELD_TOP - 1
+.next_pixel:
+  or es:[di],al
+  xchg al,ah
+  inc bl
+  cmp bl,4
+  jb .same_block
+  xor bl,bl
+  add di,ROW_BYTES - 3
+  loop .next_pixel
+  jmp short .done
+.same_block:
+  inc di
+  loop .next_pixel
+.done:
+  pop cx
+  pop bx
   ret
 
 ; AL is een y-coordinaat. Schrijf een volledige 640-pixel witte lijn.
