@@ -26,7 +26,7 @@ FOOD_SOUND_DURATION equ 10
 CRASH_TONE_START equ 20h
 CRASH_TONE_STEP  equ 04h
 CRASH_TONE_STEPS equ 24
-CRASH_TONE_DURATION equ 2
+CRASH_TONE_DURATION equ 5
 
 DIR_RIGHT equ 0
 DIR_LEFT  equ 1
@@ -254,6 +254,8 @@ move_snake:
 .down:
   call step_down
 .new_head:
+  call is_outside_playfield
+  jc .crashed
   mov byte [ate_food],0
   call is_food_at_position
   jc .eat_food
@@ -593,6 +595,62 @@ packed_to_vram:
   shr dx,1
   mov di,dx
   mov al,[cs:dot_masks + bx]
+  ret
+
+; CF=1 als de 2x1-kop een van de vier spelveldranden zou raken. Deze
+; controle is los van de zichtbare blauw-cyaan rand, waarin blauwe pixels
+; dezelfde kleur hebben als de achtergrond.
+is_outside_playfield:
+  push ax
+  push bx
+  push cx
+  push dx
+  mov cx,ax
+  and cx,3                    ; horizontale 2-pixelmaskindex
+  call packed_to_vram
+  mov ax,di
+  xor dx,dx
+  mov bx,ROW_BYTES
+  div bx                       ; AX=vier-scanlineblok, DX=blokrest
+
+  cmp ax,2                    ; y=0..7 is de zwarte bovenmarge
+  jb .outside
+  cmp ax,49
+  ja .outside
+  cmp ax,2
+  jne .not_top_block
+  cmp dl,2                    ; y=8/9 valt op of boven de bovenrand
+  jb .outside
+.not_top_block:
+  cmp ax,49
+  jne .check_x
+  cmp dl,3                    ; y=199 is de onderrand
+  jae .outside
+.check_x:
+  shr dx,1
+  shr dx,1                    ; bytekolom 0..79
+  or dx,dx
+  jnz .not_left
+  or cx,cx                    ; x=0/1 is de linker rand
+  jz .outside
+.not_left:
+  cmp dx,COLS - 1
+  jne .inside
+  cmp cx,3                    ; x=638/639 is de rechter rand
+  je .outside
+.inside:
+  pop dx
+  pop cx
+  pop bx
+  pop ax
+  clc
+  ret
+.outside:
+  pop dx
+  pop cx
+  pop bx
+  pop ax
+  stc
   ret
 
 step_right:
