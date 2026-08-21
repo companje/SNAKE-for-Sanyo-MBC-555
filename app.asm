@@ -19,7 +19,7 @@ SNAKE_INITIAL_LEN equ 8
 SNAKE_START       equ ((100 / 4) * ROW_BYTES + (200 / 8) * 4) << 2
 FOOD_INITIAL      equ (100 / 4) * ROW_BYTES + (304 / 8) * 4
 GROWTH_PER_FOOD   equ 4
-MOVE_DELAY        equ 12000
+MOVE_DELAY        equ 8000
 
 DIR_RIGHT equ 0
 DIR_LEFT  equ 1
