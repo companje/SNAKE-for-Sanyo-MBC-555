@@ -19,7 +19,7 @@ SNAKE_INITIAL_LEN equ 8
 SNAKE_START       equ ((100 / 4) * ROW_BYTES + (200 / 8) * 4) << 2
 FOOD_INITIAL      equ (100 / 4) * ROW_BYTES + (304 / 8) * 4
 GROWTH_PER_FOOD   equ 4
-MOVE_DELAY        equ 22000
+MOVE_DELAY        equ 12000
 
 DIR_RIGHT equ 0
 DIR_LEFT  equ 1
@@ -260,6 +260,7 @@ move_snake:
   jne .crashed
   jmp short .insert_head
 .eat_food:
+  call clear_food
   add word [growth_remaining],GROWTH_PER_FOOD
   mov byte [ate_food],1
 .insert_head:
@@ -637,6 +638,29 @@ draw_food:
   ret
 
 draw_food_in_red_or_green:
+  or byte es:[di],3ch
+  or byte es:[di + 1],0ffh
+  or byte es:[di + 2],0ffh
+  or byte es:[di + 3],3ch
+  ret
+
+; Wis uitsluitend de gele pixels van het vorige balletje en herstel blauw.
+clear_food:
+  mov di,[food_offset]
+  mov bx,RED
+  mov es,bx
+  and byte es:[di],0c3h
+  and byte es:[di + 1],00h
+  and byte es:[di + 2],00h
+  and byte es:[di + 3],0c3h
+  mov bx,GREEN
+  mov es,bx
+  and byte es:[di],0c3h
+  and byte es:[di + 1],00h
+  and byte es:[di + 2],00h
+  and byte es:[di + 3],0c3h
+  mov bx,BLUE
+  mov es,bx
   or byte es:[di],3ch
   or byte es:[di + 1],0ffh
   or byte es:[di + 2],0ffh
