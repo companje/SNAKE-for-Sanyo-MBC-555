@@ -21,6 +21,7 @@ SNAKE_START       equ ((100 / 4) * ROW_BYTES + (200 / 8) * 4) << 2
 FOOD_INITIAL      equ (100 / 4) * ROW_BYTES + (304 / 8) * 4
 GROWTH_PER_FOOD   equ 20
 MOVE_DELAY        equ 4000
+BOOST_EXTRA_STEPS equ 3
 FOOD_SOUND_TONE equ 03eh
 FOOD_SOUND_DURATION equ 10
 CRASH_TONE_START equ 60h
@@ -67,11 +68,12 @@ game_loop:
   call read_keyboard
   call move_snake
   jc .crashed
-  cmp byte [boost_move],0
+ .boost:
+  cmp byte [boost_moves],0
   je .keep_playing
-  mov byte [boost_move],0
+  dec byte [boost_moves]
   call move_snake
-  jnc .keep_playing
+  jnc .boost
 .crashed:
   call play_crash_sound
   jmp menu_screen
@@ -203,7 +205,7 @@ read_keyboard:
   je .boost
   mov byte [snake_direction],DIR_DOWN
 .boost:
-  mov byte [boost_move],1
+  mov byte [boost_moves],BOOST_EXTRA_STEPS
 .done:
   ret
 
@@ -232,7 +234,7 @@ reset_game:
   mov word [snake_length],SNAKE_INITIAL_LEN
   mov word [growth_remaining],0
   mov byte [snake_direction],DIR_RIGHT
-  mov byte [boost_move],0
+  mov byte [boost_moves],0
 
   mov di,snake_positions
   mov ax,SNAKE_START
@@ -913,7 +915,7 @@ clear_plane:
   ret
 
 snake_direction:  db DIR_RIGHT
-boost_move:       db 0
+boost_moves:      db 0
 ate_food:         db 0
 snake_head_index: dw 0
 snake_length:     dw SNAKE_INITIAL_LEN
